@@ -163,6 +163,7 @@ init python:
         crit_chance: int = 20
         crit_damage: int = 1.5
         ideas: int = 200 # 이데아(재화)
+        isInsane: bool = False
         # 리스트(축복/기물) <- 붕스용어잔아... <- 능지딸려서설명할방법이이거박에업서 <- 시@밤쾅
         tides: list = field(default_factory=list) # 물결(축복)
         arcanas: list = field(default_factory=list) # 아르카나(기물) 
@@ -186,8 +187,11 @@ init python:
             if self.sanity < -100:
                 self.sanity = -100
 
-        def isInsane(self):
-            return 50 - self.sanity//2 > random.randint(1,100)
+        def sanity_roll(self):
+            if self.sanity*-1 < random.randint(1,100):
+                self.isInsane = False
+            else:
+                self.isInsane = True
 
         # 이미지
         def image(self):
@@ -237,12 +241,18 @@ init python:
 
         def skill_name(self):
             return "스킬"
-        
+
+        def skill_cost(self):
+            return self.atk//2
+
         def skill(self, enemy):
             return 1
 
         def ultimate_name(self):
             return "궁극기"
+
+        def ultimate_cost(self):
+            return self.atk*2
 
         def ultimate(self, enemy):
             return 1
@@ -268,16 +278,16 @@ init python:
 
         # 스킬 모션
         def skill_motion(self):
-            if self.sanity > 0:
-                return attack_distance
-            else:
+            if self.isInsane:
                 return attack_end
+            else:
+                return attack_distance
 
         def ultimate_motion(self):
-            if self.sanity > 0:
-                return attack_distance
-            else:
+            if self.isInsane:
                 return attack_nearby
+            else:
+                return attack_distance
 
         # 이미지
         def image(self):
@@ -294,30 +304,46 @@ init python:
 
         # 스킬
         def skill_name(self):
-            return f"양자 얽힘 (MP {self.atk//2})" if self.sanity > 0 else f"■해?ㄱ■ (MP {self.atk*2})"
+            return "자해" if self.isInsane else "양자 얽힘"
+
+        def skill_cost(self):
+            if self.isInsane:
+                return self.atk*2
+            else:
+                return self.atk//2
 
         def skill(self, enemy):
-            if self.sanity > 0:
-                self.mp -= self.atk//2
-                enemy.take_damage(self.attack(enemy, self.atk*2))
-                return 1
-            else:
+            if self.isInsane:
                 self.harm(self.atk*2)
                 self.sanity += 20
                 return 2
+            else:
+                self.mp -= self.atk//2
+                enemy.take_damage(self.attack(enemy, self.atk*2))
+                return 1
 
         def ultimate_name(self):
-            return f"양자 폭발 (MP {self.atk*2})" if self.sanity > 0 else f"■■■■■■ (MP {self.atk*3})"
+            return "■미■ㅋ#■ㅔ" if self.isInsane else "양자 폭발"
+
+        def ultimate_cost(self):
+            if self.isInsane:
+                return self.atk*3
+            else:
+                return self.atk*2
 
         def ultimate(self, enemy):
-            if self.sanity > 0:
-                self.mp -= self.atk*2
-                enemy.take_damage(self.attack(enemy, self.atk*4))
-                return 1
-            else:
+            if self.isInsane:
                 self.harm(self.atk*3)
                 enemy.take_damage(self.attack(enemy, self.atk*6))
                 return 1
+            else:
+                self.mp -= self.atk*2
+                enemy.take_damage(self.attack(enemy, self.atk*4))
+                return 1
+# 스타일
+style mad_button:
+    idle_color "#8c0909"
+    hover_color "#cc1100"
 
 # UI
 screen battle_ui(p, e):
@@ -409,7 +435,34 @@ screen battle_ui(p, e):
             xpos 0.5
             ypos 150
             vbox:
-                text _('페이즈 [len(enemyQueue)]/[phase]')
+                text _('페이즈 [phase - len(enemyQueue) + 1]/[phase]')
+
+screen skill_ui(player):
+    frame:
+        xanchor 1.0
+        yanchor 1.0
+        xpadding 50
+        ypadding 50
+        xpos 3690
+        ypos 2010
+        vbox:
+            if player.sanity == -100:
+                textbutton "{font=PyeongChang-Bold.ttf}자■ㅅ?ㄹ■ (MP [player.max_mp]){/font}" action Return("suicide") text_style "mad_button"
+            else:
+                textbutton "일반 공격" action Return("attack")
+                if player.isInsane:
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
+                else:
+                    if player.skill_cost() < player.mp:
+                        textbutton "[player.skill_name()] (MP {color=#7c4dff}[player.skill_cost()]{/color})" action Return("skill")
+                    else:
+                        textbutton "[player.skill_name()] (MP 부족)" action NullAction()
+                    if player.ultimate_cost() < player.mp:
+                        textbutton "[player.ultimate_name()] (MP {color=#7c4dff}[player.ultimate_cost()]{/color})" action Return("ultimate")
+                    else:
+                        textbutton "[player.ultimate_name()] (MP 부족)" action NullAction()
+                textbutton "명상" action Return("meditate")
 
 # image 문을 사용해 이미지를 정의합니다.
 image bgplaceholder = "background.png"
@@ -509,77 +562,53 @@ label battle(enemyList):
     $ currentPlayer.mp = currentPlayer.max_mp
     show screen battle_ui(currentPlayer, currentEnemy) with dissolve
     while on_battle:
-        menu choose_skill:
-            "행동을 선택하세요"
-            "일반 공격" if currentPlayer.sanity != -100:
-                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.attack_motion()
-                pause(0.3)
+        if currentPlayer.sanity < 0:
+            $ currentPlayer.sanity_roll()
+        call screen skill_ui(currentPlayer)
+        $ player_action = _return
+        if player_action == "attack":
+            show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.attack_motion()
+            pause(0.3)
 
-                $ currentPlayer.basic_attack(currentEnemy)
-                show expression currentPlayer.image_attack() as dreamwalker
+            $ currentPlayer.basic_attack(currentEnemy)
+            show expression currentPlayer.image_attack() as dreamwalker
+            play sound "attack5.mp3"
+            show expression currentEnemy.image as nightmare at hit
+            pause(0.25)
+            show expression currentPlayer.image() as dreamwalker at attack_end
+        elif player_action == "skill":
+            show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
+            pause(0.3)
+
+            $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
+            show expression currentPlayer.image_attack() as dreamwalker
+            if isEnemyAttacked:
                 play sound "attack5.mp3"
                 show expression currentEnemy.image as nightmare at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker at attack_end
-            # 스킬
-            "[currentPlayer.skill_name()]" if currentPlayer.sanity > 0 and currentPlayer.sanity != -100:
-                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
-                pause(0.3)
+            pause(0.25)
+            show expression currentPlayer.image() as dreamwalker at attack_end
+        elif player_action == "ultimate":
+            show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
+            pause(0.3)
 
-                $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
-                show expression currentPlayer.image_attack() as dreamwalker
-                if isEnemyAttacked:
-                    play sound "attack5.mp3"
-                    show expression currentEnemy.image as nightmare at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker at attack_end
-            "{color=#cc1100}{font=PyeongChang-Bold.ttf}[currentPlayer.skill_name()]{/font}{/color}" if currentPlayer.sanity <= 0 and currentPlayer.sanity != -100:
-                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
-                pause(0.3)
-
-                $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
-                show expression currentPlayer.image_attack() as dreamwalker
-                if isEnemyAttacked:
-                    play sound "attack5.mp3"
-                    if isEnemyAttacked == 2:
-                        show expression currentPlayer.image_hit() as dreamwalker at hit
-                    else:
-                        show expression currentEnemy.image as nightmare at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker at attack_end
-            # 궁극기
-            "[currentPlayer.ultimate_name()]" if currentPlayer.sanity > 0 and currentPlayer.sanity != -100:
-                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
-                pause(0.3)
-
-                $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
-                show expression currentPlayer.image_attack() as dreamwalker
-                if isEnemyAttacked:
-                    play sound "attack5.mp3"
-                    show expression currentEnemy.image as nightmare at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker at attack_end
-            "{color=#cc1100}{font=PyeongChang-Bold.ttf}[currentPlayer.ultimate_name()]{/font}{/color}" if currentPlayer.sanity <= 0 and currentPlayer.sanity != -100:
-                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
-                pause(0.3)
-
-                $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
-                show expression currentPlayer.image_attack() as dreamwalker
-                if isEnemyAttacked:
-                    play sound "attack5.mp3"
-                    show expression currentEnemy.image as nightmare at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker at attack_end
-            
-            "명상" if currentPlayer.sanity != -100:
-                $ currentPlayer.meditate()
-                play sound "heal.mp3"
-            "{color=#cc1100}{font=PyeongChang-Bold.ttf}자■하?ㄱ■{/font}{/color}" if currentPlayer.sanity == -100:
-                $ currentPlayer.mp = 0
+            $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
+            show expression currentPlayer.image_attack() as dreamwalker
+            if isEnemyAttacked:
                 play sound "attack5.mp3"
-                show expression currentPlayer.image_hit() as dreamwalker at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker
+                show expression currentEnemy.image as nightmare at hit
+            pause(0.25)
+            show expression currentPlayer.image() as dreamwalker at attack_end
+        elif player_action == "meditate":
+            $ currentPlayer.meditate()
+            play sound "heal.mp3"
+        elif player_action == "suicide":
+            $ currentPlayer.mp = 0
+            play sound "attack5.mp3"
+            show expression currentPlayer.image_hit() as dreamwalker at hit
+            pause(0.25)
+            show expression currentPlayer.image() as dreamwalker
+        else:
+            perwin "뭐야ㅅ발 버그제보점;;;"
         pause(0.6)
 
         if currentPlayer.mp <= 0:
