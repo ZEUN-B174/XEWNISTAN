@@ -165,7 +165,7 @@ init python:
         ideas: int = 200 # 이데아(재화)
         # 리스트(축복/기물) <- 붕스용어잔아... <- 능지딸려서설명할방법이이거박에업서 <- 시@밤쾅
         tides: list = field(default_factory=list) # 물결(축복)
-        arcanas: list = field(default_factory=list) # 아르카나(기물)
+        arcanas: list = field(default_factory=list) # 아르카나(기물) 
 
         # 노가다 방지용
         def __post_init__(self):
@@ -188,6 +188,19 @@ init python:
 
         def isInsane(self):
             return 50 - self.sanity//2 > random.randint(1,100)
+
+        # 이미지
+        def image(self):
+            return "charactername.png"
+
+        def image_standby(self):
+            return "charactername_standby.png"
+
+        def image_attack(self):
+            return "charactername_attack.png"
+
+        def image_hit(self):
+            return "charactername_hit.png"
 
         # 캐릭터 모션
         def attack_motion(self):
@@ -234,8 +247,11 @@ init python:
         def ultimate(self, enemy):
             return 1
 
-    # 이성치 음수로 내려가면 내려간만큼 이상스킬 발동률/대미지 높아진다고 해야지
-    # 확률형 이상스킬 모션이 애매한데 미리 어떤 행동할지 저장해서 참고하게 할까
+    """
+    이성치 음수로 내려가면 내려간만큼 이상스킬 발동률/대미지 높아진다고 해야지
+    확률형 이상스킬 모션이 애매한데 미리 어떤 행동할지 저장해서 참고하게 할까
+    이성치 -50~50으로 할까? 100은 너무 큰거같음
+    """
 
     # 캐릭터
     @dataclass
@@ -263,6 +279,18 @@ init python:
             else:
                 return attack_nearby
 
+        # 이미지
+        def image(self):
+            return "tester.png"
+
+        def image_standby(self):
+            return "tester.png"
+
+        def image_attack(self):
+            return "tester_attack.png"
+
+        def image_hit(self):
+            return "tester_hit.png"
 
         # 스킬
         def skill_name(self):
@@ -384,11 +412,6 @@ screen battle_ui(p, e):
                 text _('페이즈 [len(enemyQueue)]/[phase]')
 
 # image 문을 사용해 이미지를 정의합니다.
-image tester = "tester.png"
-image tester attack = "tester_attack.png"
-image tester hit = "tester_hit.png"
-
-image willowisp = "willowisp.png"
 image bgplaceholder = "background.png"
 image a01 = "placeholder.png"
 
@@ -480,8 +503,8 @@ label battle(enemyList):
             enemyQueue.append(copy.deepcopy(random.choice(enemyList)))
         currentEnemy = enemyQueue[0]
 
-    show tester at playerpos zorder 1 with easeinleft
-    show expression currentEnemy.image as enemy at enemypos zorder 0 with easeinright
+    show expression currentPlayer.image() as dreamwalker at playerpos zorder 1 with easeinleft
+    show expression currentEnemy.image as nightmare at enemypos zorder 0 with easeinright
     perwin "아참 여기선 아직 자동으로 힐 안되니까 내가 시켜줌"
     $ currentPlayer.mp = currentPlayer.max_mp
     show screen battle_ui(currentPlayer, currentEnemy) with dissolve
@@ -489,64 +512,64 @@ label battle(enemyList):
         menu choose_skill:
             "행동을 선택하세요"
             "일반 공격" if currentPlayer.sanity != -100:
-                show tester at currentPlayer.attack_motion()
+                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.attack_motion()
                 pause(0.3)
 
                 $ currentPlayer.basic_attack(currentEnemy)
-                show tester attack
+                show expression currentPlayer.image_attack() as dreamwalker
                 play sound "attack5.mp3"
-                show expression currentEnemy.image as enemy at hit
+                show expression currentEnemy.image as nightmare at hit
                 pause(0.25)
-                show tester at attack_end
+                show expression currentPlayer.image() as dreamwalker at attack_end
             # 스킬
             "[currentPlayer.skill_name()]" if currentPlayer.sanity > 0 and currentPlayer.sanity != -100:
-                show tester at currentPlayer.skill_motion()
+                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
                 pause(0.3)
 
                 $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
-                show tester attack
+                show expression currentPlayer.image_attack() as dreamwalker
                 if isEnemyAttacked:
                     play sound "attack5.mp3"
-                    show expression currentEnemy.image as enemy at hit
+                    show expression currentEnemy.image as nightmare at hit
                 pause(0.25)
-                show tester at attack_end
+                show expression currentPlayer.image() as dreamwalker at attack_end
             "{color=#cc1100}{font=PyeongChang-Bold.ttf}[currentPlayer.skill_name()]{/font}{/color}" if currentPlayer.sanity <= 0 and currentPlayer.sanity != -100:
-                show tester at currentPlayer.skill_motion()
+                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
                 pause(0.3)
 
                 $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
-                show tester attack
+                show expression currentPlayer.image_attack() as dreamwalker
                 if isEnemyAttacked:
                     play sound "attack5.mp3"
                     if isEnemyAttacked == 2:
-                        show tester hit at hit
+                        show expression currentPlayer.image_hit() as dreamwalker at hit
                     else:
-                        show expression currentEnemy.image as enemy at hit
+                        show expression currentEnemy.image as nightmare at hit
                 pause(0.25)
-                show tester at attack_end
+                show expression currentPlayer.image() as dreamwalker at attack_end
             # 궁극기
             "[currentPlayer.ultimate_name()]" if currentPlayer.sanity > 0 and currentPlayer.sanity != -100:
-                show tester at currentPlayer.ultimate_motion()
+                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
                 pause(0.3)
 
                 $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
-                show tester attack
+                show expression currentPlayer.image_attack() as dreamwalker
                 if isEnemyAttacked:
                     play sound "attack5.mp3"
-                    show expression currentEnemy.image as enemy at hit
+                    show expression currentEnemy.image as nightmare at hit
                 pause(0.25)
-                show tester at attack_end
+                show expression currentPlayer.image() as dreamwalker at attack_end
             "{color=#cc1100}{font=PyeongChang-Bold.ttf}[currentPlayer.ultimate_name()]{/font}{/color}" if currentPlayer.sanity <= 0 and currentPlayer.sanity != -100:
-                show tester at currentPlayer.ultimate_motion()
+                show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
                 pause(0.3)
 
                 $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
-                show tester attack
+                show expression currentPlayer.image_attack() as dreamwalker
                 if isEnemyAttacked:
                     play sound "attack5.mp3"
-                    show expression currentEnemy.image as enemy at hit
+                    show expression currentEnemy.image as nightmare at hit
                 pause(0.25)
-                show tester at attack_end
+                show expression currentPlayer.image() as dreamwalker at attack_end
             
             "명상" if currentPlayer.sanity != -100:
                 $ currentPlayer.meditate()
@@ -554,54 +577,54 @@ label battle(enemyList):
             "{color=#cc1100}{font=PyeongChang-Bold.ttf}자■하?ㄱ■{/font}{/color}" if currentPlayer.sanity == -100:
                 $ currentPlayer.mp = 0
                 play sound "attack5.mp3"
-                show tester hit at hit
+                show expression currentPlayer.image_hit() as dreamwalker at hit
                 pause(0.25)
-                show tester -hit
+                show expression currentPlayer.image() as dreamwalker
         pause(0.6)
 
         if currentPlayer.mp <= 0:
             "..."
             $ on_battle = 0
             hide screen battle_ui with dissolve
-            hide tester with easeoutleft
-            hide enemy with easeoutright
+            hide dreamwalker with easeoutleft
+            hide nightmare with easeoutright
             return
         
         if currentEnemy.mp <= 0:
             "{color=#7c4dff}[currentEnemy.name]{/color}(을)를 처치했습니다!"
-            hide enemy with dissolve
+            hide nightmare with dissolve
             $ enemyQueue.pop(0)
             if not enemyQueue:
                 $ on_battle = 0
             else:
                 $ currentEnemy = enemyQueue[0]
-                show expression currentEnemy.image as enemy at right zorder 0 with easeinright
+                show expression currentEnemy.image as nightmare at right zorder 0 with easeinright
                 show screen battle_ui(currentPlayer, currentEnemy) with dissolve
                 "새로운 적이 등장했습니다!"
         else:
-            show expression currentEnemy.image as enemy at currentEnemy.turn_motion()
+            show expression currentEnemy.image as nightmare at currentEnemy.turn_motion()
             pause(0.3)
             $ isPlayerAttacked = currentEnemy.take_turn(currentPlayer)
             if isPlayerAttacked == 1:
                 play sound "attack4.mp3"
-                show tester hit at hit
+                show expression currentPlayer.image_hit() as dreamwalker at hit
                 pause(0.25)
-                show tester -hit
+                show expression currentPlayer.image() as dreamwalker
             elif isPlayerAttacked == 2:
                 play sound "dark_magic.mp3"
-                show tester hit at hit
+                show expression currentPlayer.image_hit() as dreamwalker at hit
                 pause(0.25)
-                show tester -hit
+                show expression currentPlayer.image() as dreamwalker
             else:
                 play sound "heal.mp3"
                 pause(0.25)
-            show expression currentEnemy.image as enemy at attack_end
+            show expression currentEnemy.image as nightmare at attack_end
 
 
         if currentPlayer.mp <= 0:
             "적에게 쓰러졌습니다..."
             $ on_battle = 0
     hide screen battle_ui with dissolve
-    hide tester with easeoutleft
-    hide enemy with easeoutright
+    hide dreamwalker with easeoutleft
+    hide nightmare with easeoutright
     return
