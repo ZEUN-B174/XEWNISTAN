@@ -516,11 +516,6 @@ label start:
         """
         currentPlayer = Tester()
     scene bgplaceholder with dissolve
-    $ d2 = random.randint(0,1)
-    if d2:
-        play music "Suicidal Impulse.wav"
-    else:
-        play music "Suicidal Impulse_var.wav"
     # KILL YOURSELF
     perwin "아아, 테스트 중이야."
     perwin "이름부터 입력하도록."
@@ -535,6 +530,10 @@ label start:
     jump main
 
 label main:
+    if currentPlayer.sanity > 0:
+        play music "Time2Dream.wav" fadeout 1.0 fadein 1.0
+    else:
+        play music "Nightmare Town.wav" fadeout 1.0 fadein 1.0
     perwin "선택지 놔둘테니까 테스트하셈;"
     menu:
         "전투":
@@ -555,7 +554,13 @@ label battle(enemyList):
         for i in range(phase):
             enemyQueue.append(copy.deepcopy(random.choice(enemyList)))
         currentEnemy = enemyQueue[0]
-
+    $ battle_music = random.randint(1,3)
+    if battle_music == 1:
+        play music "Nembutal.wav" volume 0.5 fadeout 1.0 fadein 1.0
+    elif battle_music == 2:
+        play music "Suicidal Impulse.wav" fadeout 1.0 fadein 1.0
+    else:
+        play music "Suicidal Impulse_var.wav" fadeout 1.0 fadein 1.0
     show expression currentPlayer.image() as dreamwalker at playerpos zorder 1 with easeinleft
     show expression currentEnemy.image as nightmare at enemypos zorder 0 with easeinright
     perwin "아참 여기선 아직 자동으로 힐 안되니까 내가 시켜줌"
