@@ -2,10 +2,19 @@
 default enemyQueue = []
 default phase = 0
 default currentPlayer = None
+default currentEnemy = None
+default on_battle = False
+default player_won = False
 
 init python:
     import random, copy
     from dataclasses import dataclass
+
+    # 방어력에 따른 데미지 감쇄 상수. 이 값만큼 방어력이 있으면 피해량이 절반이 됨.
+    DEFENCE_CONSTANT = 50
+
+    def calc_damage(amount, target_defence):
+        return int(amount * (DEFENCE_CONSTANT / (DEFENCE_CONSTANT + target_defence)))
 
     @dataclass
     class Player:
@@ -18,6 +27,18 @@ init python:
             if self.exp >= 100:
                 self.level += self.exp//100
                 self.exp %= 100
+
+    @dataclass
+    class ActionResult:
+        """
+        공격/스킬/턴 처리 결과로 리턴하는 객체.
+        battle 루프는 이 값만 보고 연출(모션/사운드)을 결정하기 때문에,
+        새 스킬을 추가할 때 battle 루프를 건드릴 필요가 없어짐.
+        """
+        target_hit: bool = False        # 상대(적 또는 플레이어)에게 피격 연출을 보여줄지
+        target_sound: str = "attack5.mp3"
+        self_effect: str = None         # None / "heal" / "harm" — 시전자 본인에게 일어나는 연출
+        self_sound: str = None
 
     @dataclass
     class Nightmare:
@@ -44,8 +65,7 @@ init python:
 
         # 기본기능
         def attack(self, player, amount):
-            damage = amount * (50 / (50 + player.defence))
-            return int(damage)
+            return calc_damage(amount, player.defence)
 
         def heal(self, amount):
             self.mp += amount
@@ -56,11 +76,11 @@ init python:
         def basic_attack(self, player):
             damage = self.attack(player, self.atk)
             player.take_damage(damage)
+            return ActionResult(target_hit=True, target_sound="attack4.mp3")
 
         def take_turn(self, player):
             self.turn_counter += 1
-            self.basic_attack(player)
-            return 1
+            return self.basic_attack(player)
 
     @dataclass
     class WilloWisp(Nightmare):
@@ -77,15 +97,13 @@ init python:
             else:
                 return enemy_attack_distance
 
-
         def take_turn(self, player):
             self.turn_counter += 1
             if self.turn_counter % 2:
-                self.basic_attack(player)
-                return 1
+                return self.basic_attack(player)
             else:
                 player.take_sanity(5)
-                return 2
+                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
 
     @dataclass
     class Teruterubozu(Nightmare):
@@ -104,18 +122,16 @@ init python:
             else:
                 return attack_end
 
-
         def take_turn(self, player):
             self.turn_counter += 1
             if self.turn_counter % 3 == 1:
-                self.basic_attack(player)
-                return 1
+                return self.basic_attack(player)
             elif self.turn_counter % 3 == 2:
                 player.take_sanity(10)
-                return 2
+                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
             else:
                 self.heal(self.atk)
-                return 0
+                return ActionResult(self_effect="heal", self_sound="heal.mp3")
 
     @dataclass
     class Dreamwalker:
@@ -147,7 +163,7 @@ init python:
             if self.sanity < -100:
                 self.sanity = -100
 
-        def heal_sanity(self, amount):
+        def recover_sanity(self, amount):
             self.sanity += amount
             if self.sanity > 100:
                 self.sanity = 100
@@ -183,8 +199,7 @@ init python:
 
         # 기본기능
         def attack(self, enemy, amount):
-            damage = amount * (50 / (50 + enemy.defence))
-            return int(damage)
+            return calc_damage(amount, enemy.defence)
 
         def heal(self, amount):
             self.mp += amount
@@ -200,9 +215,11 @@ init python:
         def basic_attack(self, enemy):
             damage = self.attack(enemy, self.atk)
             enemy.take_damage(damage)
+            return ActionResult(target_hit=True)
 
         def meditate(self):
             self.heal(self.atk)
+            return ActionResult(self_effect="heal", self_sound="heal.mp3")
 
         def skill_name(self):
             return "스킬"
@@ -211,7 +228,7 @@ init python:
             return self.atk//2
 
         def skill(self, enemy):
-            return 1
+            return ActionResult()
 
         def ultimate_name(self):
             return "궁극기"
@@ -220,7 +237,7 @@ init python:
             return self.atk*2
 
         def ultimate(self, enemy):
-            return 1
+            return ActionResult()
 
     # 캐릭터
     @dataclass
@@ -244,7 +261,7 @@ init python:
 
         def ultimate_motion(self):
             if self.isInsane:
-                return attack_nearby
+                return attack_delayed_nearby
             else:
                 return attack_distance
 
@@ -274,12 +291,12 @@ init python:
         def skill(self, enemy):
             if self.isInsane:
                 self.harm(self.atk*2)
-                self.heal_sanity(20)
-                return 2
+                self.recover_sanity(20)
+                return ActionResult(self_effect="harm", self_sound="harm.mp3")
             else:
                 self.mp -= self.atk//2
                 enemy.take_damage(self.attack(enemy, self.atk*2))
-                return 1
+                return ActionResult(target_hit=True)
 
         def ultimate_name(self):
             return "■미■ㅋ#■ㅔ" if self.isInsane else "양자 폭발"
@@ -294,11 +311,11 @@ init python:
             if self.isInsane:
                 self.harm(self.atk*3)
                 enemy.take_damage(self.attack(enemy, self.atk*6))
-                return 1
+                return ActionResult(target_hit=True, self_effect="harm", self_sound="harm.mp3")
             else:
                 self.mp -= self.atk*2
                 enemy.take_damage(self.attack(enemy, self.atk*4))
-                return 1
+                return ActionResult(target_hit=True)
 # 스타일
 style mad_button:
     idle_color "#8c0909"
@@ -407,8 +424,8 @@ screen skill_ui(player):
         vbox:
             textbutton "일반 공격" action Return("attack")
             if player.isInsane:
-                textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
-                textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
             else:
                 if player.skill_cost() < player.mp:
                     textbutton "[player.skill_name()] (MP {color=#7c4dff}[player.skill_cost()]{/color})" action Return("skill")
@@ -449,6 +466,10 @@ transform attack_nearby:
 
 transform attack_distance:
     easein 0.2 xoffset -200
+
+transform attack_delayed_nearby:
+    linear 0.25 xoffset 0
+    ease 0.3 xoffset 1900
 
 transform attack_end:
     ease 0.3 xoffset 0
@@ -499,13 +520,18 @@ label main:
 
 label area_battle:
     call battle([WilloWisp(), Teruterubozu()])
-    # 나중에 보상 얻는 시스템 넣을 곳
+    $ player_won = _return
+    if player_won:
+        perwin "야르"
+        # 나중에 보상 얻는 시스템 넣을 곳
+    else:
+        perwin "ㄲㅂ"
+        # 나중에 게임오버(패널티/리트라이 등) 처리 넣을 곳
     jump main
 
 label battle(enemyList):
     python:
-        battle_result = ""
-        on_battle = 1
+        on_battle = True
         enemyQueue = []
         phase = random.randint(2,4)
         for i in range(phase):
@@ -534,43 +560,39 @@ label battle(enemyList):
         $ currentPlayer.sanity_roll()
         call screen skill_ui(currentPlayer)
         $ player_action = _return
+
         if player_action == "attack":
             show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.attack_motion()
-            pause(0.3)
-
-            $ currentPlayer.basic_attack(currentEnemy)
-            show expression currentPlayer.image_attack() as dreamwalker
-            play sound "attack5.mp3"
-            show expression currentEnemy.image as nightmare at hit
-            pause(0.25)
-            show expression currentPlayer.image() as dreamwalker at attack_end
         elif player_action == "skill":
             show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
-            pause(0.3)
-
-            $ isEnemyAttacked = currentPlayer.skill(currentEnemy)
-            show expression currentPlayer.image_attack() as dreamwalker
-            if isEnemyAttacked:
-                play sound "attack5.mp3"
-                show expression currentEnemy.image as nightmare at hit
-            pause(0.25)
-            show expression currentPlayer.image() as dreamwalker at attack_end
         elif player_action == "ultimate":
             show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
-            pause(0.3)
-
-            $ isEnemyAttacked = currentPlayer.ultimate(currentEnemy)
-            show expression currentPlayer.image_attack() as dreamwalker
-            if isEnemyAttacked:
-                play sound "attack5.mp3"
-                show expression currentEnemy.image as nightmare at hit
-            pause(0.25)
-            show expression currentPlayer.image() as dreamwalker at attack_end
         elif player_action == "meditate":
-            $ currentPlayer.meditate()
+            $ result = currentPlayer.meditate()
             play sound "heal.mp3"
         else:
             perwin "뭐야ㅅ발 버그제보점;;;"
+            $ result = ActionResult()
+
+        if player_action in ("attack", "skill", "ultimate"):
+            pause(0.3)
+            if player_action == "attack":
+                $ result = currentPlayer.basic_attack(currentEnemy)
+            elif player_action == "skill":
+                $ result = currentPlayer.skill(currentEnemy)
+            elif player_action == "ultimate":
+                $ result = currentPlayer.ultimate(currentEnemy)
+
+            if result.self_effect == "harm":
+                play sound (result.self_sound if result.self_sound else "harm.mp3")
+                show expression currentPlayer.image_hit() as dreamwalker at hit
+                pause(0.3)
+            if result.target_hit:
+                show expression currentPlayer.image_attack() as dreamwalker
+                play sound result.target_sound
+                show expression currentEnemy.image as nightmare at hit
+            pause(0.25)
+            show expression currentPlayer.image() as dreamwalker at attack_end
         pause(0.6)
         
         if currentEnemy.mp <= 0:
@@ -578,8 +600,8 @@ label battle(enemyList):
             hide nightmare with dissolve
             $ enemyQueue.pop(0)
             if not enemyQueue:
-                $ on_battle = 0
-                $ battle_result = "win"
+                $ on_battle = False
+                $ player_won = True
             else:
                 $ currentEnemy = enemyQueue[0]
                 show expression currentEnemy.image as nightmare at enemypos zorder 0 with easeinright
@@ -588,28 +610,23 @@ label battle(enemyList):
         else:
             show expression currentEnemy.image as nightmare at currentEnemy.turn_motion()
             pause(0.3)
-            $ isPlayerAttacked = currentEnemy.take_turn(currentPlayer)
-            if isPlayerAttacked == 1:
-                play sound "attack4.mp3"
+            $ enemy_result = currentEnemy.take_turn(currentPlayer)
+            if enemy_result.target_hit:
+                play sound enemy_result.target_sound
                 show expression currentPlayer.image_hit() as dreamwalker at hit
                 pause(0.25)
                 show expression currentPlayer.image() as dreamwalker
-            elif isPlayerAttacked == 2:
-                play sound "dark_magic.mp3"
-                show expression currentPlayer.image_hit() as dreamwalker at hit
-                pause(0.25)
-                show expression currentPlayer.image() as dreamwalker
-            else:
-                play sound "heal.mp3"
+            elif enemy_result.self_effect == "heal":
+                play sound (enemy_result.self_sound if enemy_result.self_sound else "heal.mp3")
                 pause(0.25)
             show expression currentEnemy.image as nightmare at attack_end
 
 
         if currentPlayer.mp <= 0:
             "적에게 쓰러졌습니다..."
-            $ on_battle = 0
-            $ battle_result = "lose"
+            $ on_battle = False
+            $ player_won = False
     hide screen battle_ui with dissolve
     hide dreamwalker with easeoutleft
     hide nightmare with easeoutright
-    return battle_result
+    return player_won
