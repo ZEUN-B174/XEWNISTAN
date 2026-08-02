@@ -1,56 +1,23 @@
 ﻿# 이 파일에 게임 스크립트를 입력합니다.
+default enemyQueue = []
+default phase = 0
+default currentPlayer = None
+
 init python:
     import random, copy
-    from dataclasses import dataclass, field
-    
-    # 전역 변수
-    totaldamage = 0
-    enemyQueue = []
-    phase = 0
+    from dataclasses import dataclass
 
-    # 재화 저장용 전역(?) 플레이어
     @dataclass
     class Player:
-        name: str
         level: int = 1
         exp: int = 0
-        crystal: int = 0 # 재화
+        dream_crystal: int = 0 # 영구 재화 (꿈의 결정)
 
         def getEXP(self, dim, area):
             self.exp += (dim*10 + area)*100
             if self.exp >= 100:
                 self.level += self.exp//100
                 self.exp %= 100
-
-    @dataclass
-    class Tide:
-        id: str
-        name: str
-        description: str
-
-        def when_battle_starts(self, player, enemy):
-            pass
-
-        def when_attack(self, player):
-            pass
-        
-        def when_use_skill(self, player):
-            pass
-        
-        def when_use_ultimate(self, player):
-            pass
-
-        def when_get_damage(self, player):
-            pass
-
-    @dataclass
-    class Arcana:
-        id: str
-        name: str
-        description: str
-
-        def on_equip(self, player):
-            pass
 
     @dataclass
     class Nightmare:
@@ -61,7 +28,7 @@ init python:
         defence: int
         image: str
         mp: int = 0
-        turn_counter = 0
+        turn_counter: int = 0
 
         def __post_init__(self):
             self.mp = self.max_mp
@@ -161,22 +128,15 @@ init python:
         # 여기서부터 미리 정의해두는
         mp: int = 0
         crit_chance: int = 20
-        crit_damage: int = 1.5
-        ideas: int = 200 # 이데아(재화)
-        isInsane: bool = False
-        # 리스트(축복/기물) <- 붕스용어잔아... <- 능지딸려서설명할방법이이거박에업서 <- 시@밤쾅
-        tides: list = field(default_factory=list) # 물결(축복)
-        arcanas: list = field(default_factory=list) # 아르카나(기물) 
+        crit_damage: float = 1.5
+        dream_shard: int = 200 # 재화 (꿈의 파편)
+        isInsane: bool = False 
 
         # 노가다 방지용
         def __post_init__(self):
             self.mp = self.max_mp
 
         # 유틸리티
-        def add_arcana(self, artifact):
-            self.artifacts.append(artifact)
-            artifact.on_equip(self)
-
         def take_damage(self, amount):
             self.mp -= amount
             if self.mp < 0:
@@ -187,8 +147,13 @@ init python:
             if self.sanity < -100:
                 self.sanity = -100
 
+        def heal_sanity(self, amount):
+            self.sanity += amount
+            if self.sanity > 100:
+                self.sanity = 100
+
         def sanity_roll(self):
-            if self.sanity*-1 < random.randint(1,100):
+            if self.sanity > 0 or self.sanity*-1 < random.randint(1,100):
                 self.isInsane = False
             else:
                 self.isInsane = True
@@ -257,12 +222,6 @@ init python:
         def ultimate(self, enemy):
             return 1
 
-    """
-    이성치 음수로 내려가면 내려간만큼 이상스킬 발동률/대미지 높아진다고 해야지
-    확률형 이상스킬 모션이 애매한데 미리 어떤 행동할지 저장해서 참고하게 할까
-    이성치 -50~50으로 할까? 100은 너무 큰거같음
-    """
-
     # 캐릭터
     @dataclass
     class Tester(Dreamwalker):
@@ -315,7 +274,7 @@ init python:
         def skill(self, enemy):
             if self.isInsane:
                 self.harm(self.atk*2)
-                self.sanity += 20
+                self.heal_sanity(20)
                 return 2
             else:
                 self.mp -= self.atk//2
@@ -446,27 +405,23 @@ screen skill_ui(player):
         xpos 3690
         ypos 2010
         vbox:
-            if player.sanity == -100:
-                textbutton "{font=PyeongChang-Bold.ttf}자■ㅅ?ㄹ■ (MP [player.max_mp]){/font}" action Return("suicide") text_style "mad_button"
+            textbutton "일반 공격" action Return("attack")
+            if player.isInsane:
+                textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
+                textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
             else:
-                textbutton "일반 공격" action Return("attack")
-                if player.isInsane:
-                    textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
-                    textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
+                if player.skill_cost() < player.mp:
+                    textbutton "[player.skill_name()] (MP {color=#7c4dff}[player.skill_cost()]{/color})" action Return("skill")
                 else:
-                    if player.skill_cost() < player.mp:
-                        textbutton "[player.skill_name()] (MP {color=#7c4dff}[player.skill_cost()]{/color})" action Return("skill")
-                    else:
-                        textbutton "[player.skill_name()] (MP 부족)" action NullAction()
-                    if player.ultimate_cost() < player.mp:
-                        textbutton "[player.ultimate_name()] (MP {color=#7c4dff}[player.ultimate_cost()]{/color})" action Return("ultimate")
-                    else:
-                        textbutton "[player.ultimate_name()] (MP 부족)" action NullAction()
-                textbutton "명상" action Return("meditate")
+                    textbutton "[player.skill_name()] (MP 부족)" action NullAction()
+                if player.ultimate_cost() < player.mp:
+                    textbutton "[player.ultimate_name()] (MP {color=#7c4dff}[player.ultimate_cost()]{/color})" action Return("ultimate")
+                else:
+                    textbutton "[player.ultimate_name()] (MP 부족)" action NullAction()
+            textbutton "명상" action Return("meditate")
 
 # image 문을 사용해 이미지를 정의합니다.
 image bgplaceholder = "background.png"
-image a01 = "placeholder.png"
 
 # 위치/변형
 transform playerpos:
@@ -533,7 +488,7 @@ label main:
     if currentPlayer.sanity > 0:
         play music "Time2Dream.wav" fadeout 1.0 fadein 1.0
     else:
-        play music "Nightmare Town.wav" fadeout 1.0 fadein 1.0
+        play music "Welcome2LiminalWorld.wav" fadeout 1.0 fadein 1.0
     perwin "선택지 놔둘테니까 테스트하셈;"
     menu:
         "전투":
@@ -544,31 +499,39 @@ label main:
 
 label area_battle:
     call battle([WilloWisp(), Teruterubozu()])
+    # 나중에 보상 얻는 시스템 넣을 곳
     jump main
 
 label battle(enemyList):
     python:
+        battle_result = ""
         on_battle = 1
         enemyQueue = []
         phase = random.randint(2,4)
         for i in range(phase):
             enemyQueue.append(copy.deepcopy(random.choice(enemyList)))
         currentEnemy = enemyQueue[0]
-    $ battle_music = random.randint(1,3)
+    $ battle_music = random.randint(1,6)
     if battle_music == 1:
-        play music "Nembutal.wav" volume 0.5 fadeout 1.0 fadein 1.0
+        play music "Shanty of Charon.wav" volume 0.5 fadeout 1.0 fadein 1.0
     elif battle_music == 2:
         play music "Suicidal Impulse.wav" fadeout 1.0 fadein 1.0
-    else:
+    elif battle_music == 3:
         play music "Suicidal Impulse_var.wav" fadeout 1.0 fadein 1.0
+    elif battle_music == 4:
+        play music "Inception.wav" volume 0.5 fadeout 1.0 fadein 1.0
+    elif battle_music == 5:
+        play music "Cipher.wav" volume 0.5 fadeout 1.0 fadein 1.0
+    else:
+        play music "Euthanize.wav" volume 0.5 fadeout 1.0 fadein 1.0
+    
     show expression currentPlayer.image() as dreamwalker at playerpos zorder 1 with easeinleft
     show expression currentEnemy.image as nightmare at enemypos zorder 0 with easeinright
     perwin "아참 여기선 아직 자동으로 힐 안되니까 내가 시켜줌"
     $ currentPlayer.mp = currentPlayer.max_mp
     show screen battle_ui(currentPlayer, currentEnemy) with dissolve
     while on_battle:
-        if currentPlayer.sanity < 0:
-            $ currentPlayer.sanity_roll()
+        $ currentPlayer.sanity_roll()
         call screen skill_ui(currentPlayer)
         $ player_action = _return
         if player_action == "attack":
@@ -606,23 +569,9 @@ label battle(enemyList):
         elif player_action == "meditate":
             $ currentPlayer.meditate()
             play sound "heal.mp3"
-        elif player_action == "suicide":
-            $ currentPlayer.mp = 0
-            play sound "attack5.mp3"
-            show expression currentPlayer.image_hit() as dreamwalker at hit
-            pause(0.25)
-            show expression currentPlayer.image() as dreamwalker
         else:
             perwin "뭐야ㅅ발 버그제보점;;;"
         pause(0.6)
-
-        if currentPlayer.mp <= 0:
-            "..."
-            $ on_battle = 0
-            hide screen battle_ui with dissolve
-            hide dreamwalker with easeoutleft
-            hide nightmare with easeoutright
-            return
         
         if currentEnemy.mp <= 0:
             "{color=#7c4dff}[currentEnemy.name]{/color}(을)를 처치했습니다!"
@@ -630,9 +579,10 @@ label battle(enemyList):
             $ enemyQueue.pop(0)
             if not enemyQueue:
                 $ on_battle = 0
+                $ battle_result = "win"
             else:
                 $ currentEnemy = enemyQueue[0]
-                show expression currentEnemy.image as nightmare at right zorder 0 with easeinright
+                show expression currentEnemy.image as nightmare at enemypos zorder 0 with easeinright
                 show screen battle_ui(currentPlayer, currentEnemy) with dissolve
                 "새로운 적이 등장했습니다!"
         else:
@@ -658,7 +608,8 @@ label battle(enemyList):
         if currentPlayer.mp <= 0:
             "적에게 쓰러졌습니다..."
             $ on_battle = 0
+            $ battle_result = "lose"
     hide screen battle_ui with dissolve
     hide dreamwalker with easeoutleft
     hide nightmare with easeoutright
-    return
+    return battle_result
