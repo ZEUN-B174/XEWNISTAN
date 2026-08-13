@@ -17,6 +17,142 @@ init python:
         return int(amount * (DEFENCE_CONSTANT / (DEFENCE_CONSTANT + target_defence)))
 
     @dataclass
+    class Skill:
+        name: str
+        desc: str # 스킬 설명
+        cost_coef: float # 공격력 기반으로 산정됨 (다른 스탯 쓰면 그 스탯 기준)
+
+        # 나중에 오버라이드 하세요
+        def execute(self, user, target):
+            return None
+
+        def cost(self, user):
+            return int(user.atk*self.cost_coef)
+
+        def is_available(self, user):
+            return user.mp > self.cost(user)
+
+        def is_visible(self, user):
+            return True
+
+    @dataclass
+    class ChaoticSkill(Skill):
+        def is_visible(self, user):
+            return False
+
+    ### 스킬 목록
+
+    ## 범용 스킬
+
+    # 일반 공격(공격력)
+    @dataclass
+    class BasicAttack(Skill):
+        name: str = "일반 공격"
+        desc: str = "공격력 100%의 피해를 가한다."
+        cost_coef: float = 0
+
+        def execute(self, user, target):
+            damage = user.attack(target, user.atk)
+            target.take_damage(damage)
+            return ActionResult(target_hit=True)
+
+    ## 테스터 스킬
+
+    # 양자 얽힘 (일반 스킬)
+    @dataclass
+    class QuantumEntangle(Skill):
+        name: str = "양자 얽힘"
+        desc: str = "공격력 200%의 피해를 가한다."
+        cost_coef: float = 0.5
+
+        def execute(self, user, target):
+            damage = user.attack(target, user.atk*2)
+            target.take_damage(damage)
+            return ActionResult(target_hit=True)
+
+    # self.harm() (일반 스킬 - 혼돈)
+    @dataclass
+    class SelfHarm(ChaoticSkill):
+        name: str = "self.harm()"
+        desc: str = "[자해]를 한다. 현재 이성치에 따라 정신력 소모량과 이성치 회복량이 달라지며, 반비례의 관계를 가진다."
+        cost_coef: float = 0
+
+        def execute(self, user, target):
+            user.harm(user.max_mp//2)
+            user.recover_sanity(user.sanity*-1//2)
+            return ActionResult(self_effect="harm", self_sound="harm.mp3")
+
+        def is_visible(self, user):
+            return user.isInsane
+
+    # 명상 (특수 스킬)
+    @dataclass
+    class Meditate(Skill):
+        name: str = "명상"
+        desc: str = "공격력의 100%만큼 정신력을 회복하고 이성치를 5 회복한다."
+        cost_coef: float = 0
+
+        def execute(self, user, target):
+            user.heal(int(user.atk))
+            user.recover_sanity(5)
+            return ActionResult(self_effect="heal", self_sound="heal.mp3")
+
+    # ??■?■■ (특수 스킬 - 혼돈)
+    @dataclass
+    class Headache(ChaoticSkill):
+        name: str = "??■?■■"
+        desc: str = "현재 이성치에 따라 공격력의 150%만큼 정신력이 회복하거나 감소한다 이성치는 10 회복되거나 줄어든다."
+        cost_coef: float = 0
+
+        def execute(self, user, target):
+            dice = random.randint(1, 100)
+            if dice > user.sanity*-1:
+                user.heal(int(user.atk*1.5))
+                user.recover_sanity(10)
+                return ActionResult(self_effect="heal", self_sound="heal.mp3")
+            else:
+                user.harm(int(user.atk*1.5))
+                user.take_sanity(10)
+                return ActionResult(self_effect="harm", self_sound="harm.mp3")
+
+        def is_visible(self, user):
+            return user.sanity <= 0
+
+    # 양자 폭발 (궁극기)
+    @dataclass
+    class QuantumExplosion(Skill):
+        name: str = "양자 폭발"
+        desc: str = "공격력 400%의 피해를 가한다."
+        cost_coef: float = 2.0
+
+        def execute(self, user, target):
+            damage = user.attack(target, user.atk*4)
+            target.take_damage(damage)
+            return ActionResult(target_hit=True)
+
+    # 행■한자■ (궁극기 - 혼돈)
+    @dataclass
+    class HappySuicide(ChaoticSkill):
+        name: str = "행■한자■"
+        desc: str = "[자살] 시도를 한다. 현재 이성치에 따라 성공 확률이 달라지며. 실패 시에는 이성치를 소모해 피해를 가한다."
+        cost_coef: float = 0
+
+        def execute(self, user, target):
+            dice = random.randint(1, 100)
+            user_san = user.sanity
+            if dice > user_san*-1:
+                user.take_sanity(5 + int(user_san*0.2))
+                damage = user.attack(target, user.atk*(4 + 4*user_san*0.01))
+                target.take_damage(damage)
+                return ActionResult(target_hit=True)
+            else:
+                user.suicide() # 1972년 11월 21일 플레이어는 오렌지병이었던 자1살로 사2망해
+                return ActionResult(self_effect="harm")
+
+        def is_visible(self, user):
+            return user.isInsane
+
+    @dataclass
     class Player:
         level: int = 1
         exp: int = 0
@@ -115,12 +251,10 @@ init python:
         image: str = "teruterubozu.png"
 
         def turn_motion(self):
-            if (self.turn_counter + 1) % 3 == 1:
-                return enemy_attack_distance
-            elif (self.turn_counter + 1) % 3 == 2:
-                return enemy_attack_distance
-            else:
+            if (self.turn_counter + 1) % 3 == 0:
                 return attack_end
+            else:
+                return enemy_attack_distance
 
         def take_turn(self, player):
             self.turn_counter += 1
@@ -151,6 +285,81 @@ init python:
         # 노가다 방지용
         def __post_init__(self):
             self.mp = self.max_mp
+            # 스킬 슬롯 (자식 클래스의 __post_init__에서 채워 넣으세요)
+            self.basic_skill = BasicAttack()
+            self.skill_normal = None
+            self.skill_chaos = None
+            self.ultimate_normal = None
+            self.ultimate_chaos = None
+            self.special_normal = None
+            self.special_chaos = None
+
+        # 혼돈 버전 조건이 충족되면 그쪽을, 아니면 평상시 버전을 고름
+        def _choose_skill(self, normal, chaos):
+            if chaos is not None and chaos.is_visible(self):
+                return chaos
+            return normal
+
+        # 일반 공격
+        def basic_attack_name(self):
+            return self.basic_skill.name
+
+        def basic_attack(self, target):
+            return self.basic_skill.execute(self, target)
+
+        # 스킬
+        def skill_name(self):
+            return self._choose_skill(self.skill_normal, self.skill_chaos).name
+
+        def skill_cost(self):
+            return self._choose_skill(self.skill_normal, self.skill_chaos).cost(self)
+
+        def skill_available(self):
+            return self._choose_skill(self.skill_normal, self.skill_chaos).is_available(self)
+
+        def skill_is_chaos(self):
+            return self._choose_skill(self.skill_normal, self.skill_chaos) is self.skill_chaos
+
+        def skill(self, target):
+            chosen = self._choose_skill(self.skill_normal, self.skill_chaos)
+            self.mp -= chosen.cost(self)
+            return chosen.execute(self, target)
+
+        # 궁극기
+        def ultimate_name(self):
+            return self._choose_skill(self.ultimate_normal, self.ultimate_chaos).name
+
+        def ultimate_cost(self):
+            return self._choose_skill(self.ultimate_normal, self.ultimate_chaos).cost(self)
+
+        def ultimate_available(self):
+            return self._choose_skill(self.ultimate_normal, self.ultimate_chaos).is_available(self)
+
+        def ultimate_is_chaos(self):
+            return self._choose_skill(self.ultimate_normal, self.ultimate_chaos) is self.ultimate_chaos
+
+        def ultimate(self, target):
+            chosen = self._choose_skill(self.ultimate_normal, self.ultimate_chaos)
+            self.mp -= chosen.cost(self)
+            return chosen.execute(self, target)
+
+        # 특수 스킬
+        def special_skill_name(self):
+            return self._choose_skill(self.special_normal, self.special_chaos).name
+
+        def special_skill_cost(self):
+            return self._choose_skill(self.special_normal, self.special_chaos).cost(self)
+
+        def special_skill_available(self):
+            return self._choose_skill(self.special_normal, self.special_chaos).is_available(self)
+
+        def special_skill_is_chaos(self):
+            return self._choose_skill(self.special_normal, self.special_chaos) is self.special_chaos
+
+        def special_skill(self):
+            chosen = self._choose_skill(self.special_normal, self.special_chaos)
+            self.mp -= chosen.cost(self)
+            return chosen.execute(self, None)
 
         # 유틸리티
         def take_damage(self, amount):
@@ -211,33 +420,9 @@ init python:
             if self.mp <= 0:
                 self.mp = 1
 
-        # 공격 및 스킬(자식 클래스에서 오버라이드)
-        def basic_attack(self, enemy):
-            damage = self.attack(enemy, self.atk)
-            enemy.take_damage(damage)
-            return ActionResult(target_hit=True)
-
-        def meditate(self):
-            self.heal(self.atk)
-            return ActionResult(self_effect="heal", self_sound="heal.mp3")
-
-        def skill_name(self):
-            return "스킬"
-
-        def skill_cost(self):
-            return self.atk//2
-
-        def skill(self, enemy):
-            return ActionResult()
-
-        def ultimate_name(self):
-            return "궁극기"
-
-        def ultimate_cost(self):
-            return self.atk*2
-
-        def ultimate(self, enemy):
-            return ActionResult()
+        # 이걸 따로 두는 이유는 축복 트리거로 작동할 예정이기 때문
+        def suicide(self):
+            self.mp = 0
 
     # 캐릭터
     @dataclass
@@ -251,6 +436,15 @@ init python:
         sanity: int = 100
         atk: int = 10
         defence: int = 10
+
+        def __post_init__(self):
+            super().__post_init__()
+            self.skill_normal = QuantumEntangle()
+            self.skill_chaos = SelfHarm()
+            self.ultimate_normal = QuantumExplosion()
+            self.ultimate_chaos = HappySuicide()
+            self.special_normal = Meditate()
+            self.special_chaos = Headache()
 
         # 스킬 모션
         def skill_motion(self):
@@ -278,44 +472,6 @@ init python:
         def image_hit(self):
             return "tester_hit.png"
 
-        # 스킬
-        def skill_name(self):
-            return "자해" if self.isInsane else "양자 얽힘"
-
-        def skill_cost(self):
-            if self.isInsane:
-                return self.atk*2
-            else:
-                return self.atk//2
-
-        def skill(self, enemy):
-            if self.isInsane:
-                self.harm(self.atk*2)
-                self.recover_sanity(20)
-                return ActionResult(self_effect="harm", self_sound="harm.mp3")
-            else:
-                self.mp -= self.atk//2
-                enemy.take_damage(self.attack(enemy, self.atk*2))
-                return ActionResult(target_hit=True)
-
-        def ultimate_name(self):
-            return "■미■ㅋ#■ㅔ" if self.isInsane else "양자 폭발"
-
-        def ultimate_cost(self):
-            if self.isInsane:
-                return self.atk*3
-            else:
-                return self.atk*2
-
-        def ultimate(self, enemy):
-            if self.isInsane:
-                self.harm(self.atk*3)
-                enemy.take_damage(self.attack(enemy, self.atk*6))
-                return ActionResult(target_hit=True, self_effect="harm", self_sound="harm.mp3")
-            else:
-                self.mp -= self.atk*2
-                enemy.take_damage(self.attack(enemy, self.atk*4))
-                return ActionResult(target_hit=True)
 # 스타일
 style mad_button:
     idle_color "#8c0909"
@@ -422,20 +578,31 @@ screen skill_ui(player):
         xpos 3690
         ypos 2010
         vbox:
-            textbutton "일반 공격" action Return("attack")
-            if player.isInsane:
+            textbutton "[player.basic_attack_name()]" action Return("attack")
+
+            if player.skill_available():
+                if player.skill_is_chaos():
                     textbutton "{font=PyeongChang-Bold.ttf}[player.skill_name()] (MP [player.skill_cost()]){/font}" action Return("skill") text_style "mad_button"
-                    textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
-            else:
-                if player.skill_cost() < player.mp:
+                else:
                     textbutton "[player.skill_name()] (MP {color=#7c4dff}[player.skill_cost()]{/color})" action Return("skill")
+            else:
+                textbutton "[player.skill_name()] (MP 부족)" action NullAction()
+
+            if player.ultimate_available():
+                if player.ultimate_is_chaos():
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.ultimate_name()] (MP [player.ultimate_cost()]){/font}" action Return("ultimate") text_style "mad_button"
                 else:
-                    textbutton "[player.skill_name()] (MP 부족)" action NullAction()
-                if player.ultimate_cost() < player.mp:
                     textbutton "[player.ultimate_name()] (MP {color=#7c4dff}[player.ultimate_cost()]{/color})" action Return("ultimate")
+            else:
+                textbutton "[player.ultimate_name()] (MP 부족)" action NullAction()
+
+            if player.special_skill_available():
+                if player.special_skill_is_chaos():
+                    textbutton "{font=PyeongChang-Bold.ttf}[player.special_skill_name()] (MP [player.special_skill_cost()]){/font}" action Return("special_skill") text_style "mad_button"
                 else:
-                    textbutton "[player.ultimate_name()] (MP 부족)" action NullAction()
-            textbutton "명상" action Return("meditate")
+                    textbutton "[player.special_skill_name()] (MP {color=#7c4dff}[player.special_skill_cost()]{/color})" action Return("special_skill")
+            else:
+                textbutton "[player.special_skill_name()] (MP 부족)" action NullAction()
 
 # image 문을 사용해 이미지를 정의합니다.
 image bgplaceholder = "background.png"
@@ -567,25 +734,28 @@ label battle(enemyList):
             show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.skill_motion()
         elif player_action == "ultimate":
             show expression currentPlayer.image_standby() as dreamwalker at currentPlayer.ultimate_motion()
-        elif player_action == "meditate":
-            $ result = currentPlayer.meditate()
-            play sound "heal.mp3"
-        else:
+        elif player_action != "special_skill":
             perwin "뭐야ㅅ발 버그제보점;;;"
             $ result = ActionResult()
 
-        if player_action in ("attack", "skill", "ultimate"):
-            pause(0.3)
+        if player_action in ("attack", "skill", "ultimate", "special_skill"):
+            if player_action != "special_skill":
+                pause(0.3)
             if player_action == "attack":
                 $ result = currentPlayer.basic_attack(currentEnemy)
             elif player_action == "skill":
                 $ result = currentPlayer.skill(currentEnemy)
             elif player_action == "ultimate":
                 $ result = currentPlayer.ultimate(currentEnemy)
+            elif player_action == "special_skill":
+                $ result = currentPlayer.special_skill()
 
             if result.self_effect == "harm":
                 play sound (result.self_sound if result.self_sound else "harm.mp3")
                 show expression currentPlayer.image_hit() as dreamwalker at hit
+                pause(0.3)
+            elif result.self_effect == "heal":
+                play sound (result.self_sound if result.self_sound else "heal.mp3")
                 pause(0.3)
             if result.target_hit:
                 show expression currentPlayer.image_attack() as dreamwalker
@@ -594,6 +764,11 @@ label battle(enemyList):
             pause(0.25)
             show expression currentPlayer.image() as dreamwalker at attack_end
         pause(0.6)
+
+        if currentPlayer.mp <= 0:
+            "..."
+            $ on_battle = False
+            $ player_won = False
         
         if currentEnemy.mp <= 0:
             "{color=#7c4dff}[currentEnemy.name]{/color}(을)를 처치했습니다!"
