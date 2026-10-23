@@ -165,11 +165,14 @@ screen skill_ui(player):
                 else:
                     textbutton "[active_sk.name] (MP 부족)" action NullAction()
 
-label battle(enemyList):
+label battle(enemyList, phase_count=None):
     python:
         on_battle = True
         enemyQueue = []
-        phase = random.randint(2, 4)
+        if phase_count is not None:
+            phase = phase_count
+        else:
+            phase = random.randint(2, 3)
         for i in range(phase):
             enemyQueue.append(copy.deepcopy(random.choice(enemyList)))
         currentEnemy = enemyQueue[0]
@@ -179,8 +182,6 @@ label battle(enemyList):
 
     show expression currentPlayer.image() as dreamwalker at playerpos zorder 1 with easeinleft
     show expression currentEnemy.image() as nightmare at enemypos zorder 0 with easeinright
-    perwin "아참 여기선 아직 자동으로 힐 안되니까 내가 시켜줌"
-    $ currentPlayer.mp = currentPlayer.max_mp
     show screen battle_ui with dissolve
 
     while on_battle:

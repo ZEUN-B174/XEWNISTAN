@@ -7,12 +7,19 @@ init 2 python:
         level: int = 1
         exp: int = 0
         dream_crystal: int = 0 # 영구 재화 (꿈의 결정)
+        run_count: int = 0
+        story_progress: int = 0 # 심층 사건(메인 스토리) 해금 진행도
 
         def getEXP(self, dim, area):
-            self.exp += (dim * 10 + area) * 100
+            reached_steps = max(1, (dim - 1) * 8 + area)
+            gained_exp = reached_steps * 30
+            gained_crystal = reached_steps * 15
+            self.exp += gained_exp
+            self.dream_crystal += gained_crystal
             if self.exp >= 100:
                 self.level += self.exp // 100
                 self.exp %= 100
+            return gained_exp, gained_crystal
 
     @dataclass
     class Unit:
@@ -64,6 +71,13 @@ init 2 python:
         def take_turn(self, player):
             return self.basic_attack(player)
 
+        def scale(self, mult):
+            self.max_mp = int(self.max_mp * mult)
+            self.mp = self.max_mp
+            self.atk = max(1, int(self.atk * mult))
+            self.defence = max(1, int(self.defence * mult))
+            return self
+
     @dataclass
     class WilloWisp(Nightmare):
         id: str = "willowisp"
@@ -108,6 +122,67 @@ init 2 python:
             else:
                 self.heal(self.atk)
                 return ActionResult(self_effect="heal", self_sound="heal.mp3")
+
+    @dataclass
+    class AbyssWisp(WilloWisp):
+        """정예 악몽: 심연의 도깨비불 (임시로 willowisp 이미지 사용)"""
+        id: str = "willowisp"
+        name: str = _("심연의 도깨비불 [정예]")
+        max_mp: int = 90
+        atk: int = 9
+        defence: int = 10
+
+        def take_turn(self, player):
+            if self.turn_counter % 2 == 1:
+                return self.basic_attack(player)
+            else:
+                player.take_sanity(12)
+                damage = self.attack(player, int(self.atk * 0.7))
+                player.take_damage(damage)
+                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+
+    @dataclass
+    class CursedTeru(Teruterubozu):
+        """정예 악몽: 저주받은 테루테루보즈 (임시로 teruterubozu 이미지 사용)"""
+        id: str = "teruterubozu"
+        name: str = _("목매단 테루테루보즈 [정예]")
+        max_mp: int = 80
+        atk: int = 12
+        defence: int = 8
+
+        def take_turn(self, player):
+            if self.turn_counter % 3 == 1:
+                return self.basic_attack(player)
+            elif self.turn_counter % 3 == 2:
+                player.take_sanity(15)
+                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+            else:
+                self.heal(int(self.atk * 1.5))
+                return ActionResult(self_effect="heal", self_sound="heal.mp3")
+
+    @dataclass
+    class DreamBoss(Nightmare):
+        """차원 보스 악몽 (차원별 이름/스탯 부여, 임시 이미지 사용)"""
+        id: str = "teruterubozu"
+        name: str = _("주인 악몽 [보스]")
+        max_mp: int = 150
+        atk: int = 14
+        defence: int = 12
+
+        def turn_motion(self):
+            if self.turn_counter % 3 == 0:
+                return enemy_attack_distance
+            return enemy_attack_nearby
+
+        def take_turn(self, player):
+            if self.turn_counter % 3 == 0:
+                # 3턴마다 강력한 정신 오염 + 피해
+                player.take_sanity(15)
+                damage = self.attack(player, int(self.atk * 1.5))
+                player.take_damage(damage)
+                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+            else:
+                return self.basic_attack(player)
 
     @dataclass
     class Dreamwalker(Unit):

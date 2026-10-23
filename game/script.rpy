@@ -2,12 +2,15 @@
 # - 스킬 정의: skills.rpy
 # - 캐릭터 및 적(유닛) 정의: units.rpy
 # - 전투 UI, 모션 및 전투 루프: battle.rpy
+# - 탐사 루프 및 연구실 베이스캠프: exploration.rpy
+# - 사건(Event) 및 심층 스토리: events.rpy
 
 # image 문을 사용해 이미지를 정의합니다.
 image bgplaceholder = "background.png"
 
 # 게임에서 사용할 캐릭터를 정의합니다.
 define perwin = Character(_('페르윈'), color="#5a36ff")
+define rinat = Character(_('리나트'), color="#ff66b2")
 
 # 여기에서부터 게임이 시작합니다.
 label start:
@@ -15,41 +18,19 @@ label start:
         """
         설정(클래스 생성 등)
         """
+        playerAccount = Player()
         currentPlayer = Tester()
     scene bgplaceholder with dissolve
-    # KILL YOURSELF
-    perwin "아아, 테스트 중이야."
-    perwin "이름부터 입력하도록."
+    # 생각해보니까 이것도 자살을 소재로 한 게임이라고 할 수가 있을ㄲ
+    # (사유: 주인공 스킬 및 등장인물(나중에 자살자 캐릭터들이 등장할 예정이라ww))
+    perwin "안녕, 베타 테스트 프로그램에 지원해줘서 고마워."
+    perwin "테스트에 앞서서 먼저 신분 확인을 할 건데 네 이름을 알려줄래?"
     python:
         yourself = renpy.input("여기에 입력하면 돼.")
         currentPlayer.name = yourself.strip()
 
         if currentPlayer.name == "":
             currentPlayer.name = _("테스터")
-    perwin "아, 그래. [currentPlayer.name](이)구나."
-    perwin "만들기ㅈㄴ귀찮네"
-    jump main
-
-label main:
-    if currentPlayer.sanity > 0:
-        play music "Time2Dream.wav" fadeout 1.0 fadein 1.0
-    else:
-        play music "Welcome2LiminalWorld.wav" fadeout 1.0 fadein 1.0
-    perwin "선택지 놔둘테니까 테스트하셈;"
-    menu:
-        "전투":
-            jump area_battle
-        "탈주":
-            stop music fadeout 1.0
-            return
-
-label area_battle:
-    call battle([WilloWisp(), Teruterubozu()])
-    $ player_won = _return
-    if player_won:
-        perwin "야르"
-        # 나중에 보상 얻는 시스템 넣을 곳
-    else:
-        perwin "ㄲㅂ"
-        # 나중에 게임오버(패널티/리트라이 등) 처리 넣을 곳
-    jump main
+    perwin "음, 그래. [currentPlayer.name]. 확인 완료했어."
+    rinat "드림링크 베타 테스트에 온 걸 환영해, [currentPlayer.name]!"
+    jump lab_hub
