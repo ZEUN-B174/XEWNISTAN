@@ -85,7 +85,7 @@ label event_payphone:
             $ currentPlayer.take_sanity(15)
             $ currentPlayer.atk += 5
             $ currentPlayer.crit_chance += 10
-            "{color=#ff4444}[[광기 결과]{/color} 이성치가 15 감소한 대신, 공격력 +5 및 치명타 확률 +10%%를 얻었습니다!"
+            "{color=#cc1100}[[광기 결과]{/color} 이성치가 15 감소한 대신, 공격력 +5 및 치명타 확률 +10%%를 얻었습니다!"
 
         "조심스럽게 수화기를 들어 응답한다":
             "수화기를 들자 익숙하고도 차분한 멜로디가 흘러나오며 긴장되었던 마음이 가라앉습니다."
@@ -175,7 +175,7 @@ label event_vending_machine:
 # [침식된 사건 1] 맥동하는 신경 단말기 (이성치 0 이하 전용)
 # ==============================================================================
 label event_eroded_flesh_terminal:
-    "— {color=#ff4444}[[침식된 사건] 맥동하는 신경 단말기{/color} —"
+    "— {color=#cc1100}[[침식된 사건] 맥동하는 신경 단말기{/color} —"
     "이성이 무너진 시야 너머로, 차가운 기계였던 터미널이 살아 숨 쉬는 붉은 신경 다발처럼 꿈틀거리고 있습니다."
     "단말기의 케이블이 뱀처럼 기어 와 당신의 목덜미에 접속을 시도합니다."
 
@@ -185,7 +185,7 @@ label event_eroded_flesh_terminal:
             $ currentPlayer.atk += 6
             $ currentPlayer.crit_damage = round(currentPlayer.crit_damage + 0.25, 2)
             "타들어 가는 고통과 함께 금기된 전투 연산 데이터가 뇌에 각인됩니다!"
-            "{color=#ff4444}[[침식 보상]{/color} 정신력을 25 소모하고 공격력 +6, 치명타 피해 +0.25배를 획득했습니다!"
+            "{color=#cc1100}[[침식 보상]{/color} 정신력을 25 소모하고 공격력 +6, 치명타 피해 +0.25배를 획득했습니다!"
 
         "{color=#cc1100}[[기억 포식] 단말기 안의 뒤틀린 기억들을 강제로 집어삼킨다 (이성치 -25){/color}":
             $ currentPlayer.take_sanity(25)
@@ -193,7 +193,7 @@ label event_eroded_flesh_terminal:
             $ currentPlayer.heal(50)
             $ currentPlayer.dream_shard += 120
             "타인의 악몽을 통째로 삼키자 정신력이 기괴하게 부풀어 오릅니다!"
-            "{color=#ff4444}[[침식 보상]{/color} 최대 정신력 +35, 정신력 +50 회복, 꿈의 파편 +120개를 획득했습니다!"
+            "{color=#cc1100}[[침식 보상]{/color} 최대 정신력 +35, 정신력 +50 회복, 꿈의 파편 +120개를 획득했습니다!"
 
         "케이블을 쳐내고 강제로 회로를 차단한다":
             $ currentPlayer.recover_sanity(30)
@@ -205,7 +205,7 @@ label event_eroded_flesh_terminal:
 # [침식된 사건 2] 속삭이는 심연의 우물 (이성치 0 이하 전용)
 # ==============================================================================
 label event_eroded_whispering_well:
-    "— {color=#ff4444}[[침식된 사건] 속삭이는 심연의 우물{/color} —"
+    "— {color=#cc1100}[[침식된 사건] 속삭이는 심연의 우물{/color} —"
     "바닥이 보이지 않는 검은 우물 속에서 당신의 목소리와 똑같은 소리가 흘러나옵니다."
     "『더 깊이 내려오고 싶다면, 네가 가진 조각을 던져 넣어라…』"
 

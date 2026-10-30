@@ -146,7 +146,7 @@ init 3 python:
     def generate_next_nodes(dim, area, sanity):
         """
         현재 구역 번호(area)에 맞는 다음 구역 선택지 리스트를 반환.
-        - 1~5구역: 자유 탐사 (3개 선택지 제시, 이성치 0 이하 시 침식 변질 발생)
+        - 1~5구역: 자유 탐사 (2~3개 선택지 제시, 이성치 0 이하 시 침식 변질 발생)
         - 6구역: 심층 사건 고정
         - 7구역: 드림링크 중계소(상점/휴식) 고정
         - 8구역: 차원 보스 고정
@@ -165,7 +165,8 @@ init 3 python:
         if area in (3, 4):
             pool.append("relay")
 
-        chosen_keys = random.sample(pool, k=min(3, len(pool)))
+        node_count = random.randint(2, 3)
+        chosen_keys = random.sample(pool, k=min(node_count, len(pool)))
         # 사건 비중을 높이기 위해, 만약 사건/자각이 하나도 안 뽑혔다면 하나쯤은 사건으로 보정할 확률 부여
         if "event" not in chosen_keys and random.random() < 0.65:
             chosen_keys[random.randint(0, len(chosen_keys) - 1)] = "event"
@@ -226,67 +227,25 @@ init 3 python:
 # ==============================================================================
 
 screen exploration_hud():
+    zorder 50
     if in_dream_run and not on_battle and currentPlayer is not None:
         python:
             p = currentPlayer
             dim_info = DIMENSION_INFO.get(currentDim, DIMENSION_INFO[1])
             dim_name = dim_info["name"]
             dim_sub = dim_info["subtitle"]
-            p_leftbar, p_rightbar = get_bar_colors((p.mp / p.max_mp) * 100 > 20)
-            ps_leftbar, ps_rightbar = get_bar_colors(p.sanity > 0)
 
-        # 좌측 상단: 캐릭터 상태창
-        frame:
-            xanchor 0.0
-            yanchor 0.0
-            xpos 80
-            ypos 60
-            xpadding 45
-            ypadding 35
-            vbox:
-                spacing 12
-                hbox:
-                    spacing 30
-                    text "{font=PyeongChang-Bold.ttf}[p.name]{/font}" size 60
-                    text "{color=#c184ff}꿈의 파편: [p.dream_shard]{/color}" size 50 yalign 0.5
-                    text "공격력 [p.atk] / 방어력 [p.defence]" size 46 color "#cccccc" yalign 0.5
-                hbox:
-                    spacing 15
-                    text _("정신력") size 48 yalign 0.5
-                    bar:
-                        value AnimatedValue(p.mp, p.max_mp, 0.2)
-                        left_bar Solid(p_leftbar)
-                        right_bar Solid(p_rightbar)
-                        xsize 520
-                        ysize 48
-                        yalign 0.5
-                    text "[p.mp]/[p.max_mp]" size 48 yalign 0.5
-                hbox:
-                    spacing 15
-                    if p.sanity > 0:
-                        text _("이성치") size 48 yalign 0.5
-                    else:
-                        text _("{color=#ff4444}이성치(침식){/color}") size 48 yalign 0.5
-                    bar:
-                        value AnimatedValue(p.sanity + 100, 200, 0.2)
-                        left_bar Solid(ps_leftbar)
-                        right_bar Solid(ps_rightbar)
-                        xsize 520
-                        ysize 48
-                        yalign 0.5
-                    if p.sanity > 0:
-                        text "[p.sanity]/100" size 48 yalign 0.5
-                    else:
-                        text "{color=#ff4444}[p.sanity]/100{/color}" size 48 yalign 0.5
+        # 좌측 상단: 캐릭터 상태창 (전투 UI와 공통)
+        use player_status_panel(p)
 
         # 우측 상단: 현재 차원 및 구역 표시
         frame:
             xanchor 1.0
             yanchor 0.0
             xpos 3760
-            ypos 60
+            ypos 80
             xpadding 50
-            ypadding 35
+            ypadding 50
             vbox:
                 spacing 8
                 text "{font=PyeongChang-Bold.ttf}제[currentDim]차원 : [dim_name]{/font}" size 60 color "#c184ff" xalign 1.0
@@ -297,9 +256,9 @@ screen node_select_ui(nodes):
     modal True
     frame:
         xalign 0.5
-        yalign 0.55
+        yalign 0.5
         xpadding 80
-        ypadding 70
+        ypadding 80
         background Solid("#0d0618dd")
         vbox:
             spacing 45
@@ -309,7 +268,7 @@ screen node_select_ui(nodes):
                 xalign 0.5
                 text "{font=PyeongChang-Bold.ttf}다음 구역 선택 ([currentArea] / [MAX_AREA] 구역){/font}" size 80 xalign 0.5 color "#ffffff"
                 if currentPlayer.sanity <= 0:
-                    text "{color=#ff4444}※ 이성치가 0 이하로 떨어져 일부 구역이 악몽에 침식되었습니다.{/color}" size 50 xalign 0.5
+                    text "{color=#cc1100}※ 이성치가 0 이하로 떨어져 일부 구역이 악몽에 침식되었습니다.{/color}" size 50 xalign 0.5
                 elif currentArea <= 5:
                     text "나아갈 꿈의 갈래를 선택하세요." size 50 xalign 0.5 color "#bbbbbb"
                 else:
@@ -321,7 +280,7 @@ screen node_select_ui(nodes):
                 for n in nodes:
                     $ card_bg = "#3b0a12ee" if n.is_eroded else "#22103bee"
                     $ card_hover = "#66111fee" if n.is_eroded else "#3d1c6bee"
-                    $ tag_color = "#ff5555" if n.is_eroded else "#c184ff"
+                    $ tag_color = "#cc1100" if n.is_eroded else "#c184ff"
                     button:
                         xsize 1020
                         ysize 680
