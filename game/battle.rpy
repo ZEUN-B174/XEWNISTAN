@@ -110,6 +110,14 @@ screen battle_ui(p=currentPlayer, e=currentEnemy):
                     text '[p.sanity]/100'
                 else:
                     text '{color=#cc1100}[p.sanity]/100{/color}'
+            if p.buffs:
+                hbox:
+                    spacing 15
+                    for b in p.buffs:
+                        if b.is_debuff:
+                            text "{color=#ff5555}[[[b.name] [b.duration]턴]{/color}" size 40
+                        else:
+                            text "{color=#c184ff}[[[b.name] [b.duration]턴]{/color}" size 40
 
     # 적 스탯 패널 (우측 상단)
     frame:
@@ -131,6 +139,14 @@ screen battle_ui(p=currentPlayer, e=currentEnemy):
                     xsize 600
                 null width 10
                 text '[e.mp]/[e.max_mp]'
+            if e.buffs:
+                hbox:
+                    spacing 15
+                    for b in e.buffs:
+                        if b.is_debuff:
+                            text "{color=#ff5555}[[[b.name] [b.duration]턴]{/color}" size 40
+                        else:
+                            text "{color=#c184ff}[[[b.name] [b.duration]턴]{/color}" size 40
 
     # 페이즈 표시
     frame:
@@ -168,6 +184,7 @@ screen skill_ui(player):
 label battle(enemyList, phase_count=None):
     python:
         on_battle = True
+        currentPlayer.clear_buffs()
         enemyQueue = []
         if phase_count is not None:
             phase = phase_count
@@ -192,28 +209,42 @@ label battle(enemyList, phase_count=None):
         if player_action not in ("attack", "skill", "ultimate", "special_skill"):
             perwin "뭐야ㅅ발 버그제보점;;;"
         else:
-            $ chosen_skill = currentPlayer.get_active_skill(player_action)
-            if chosen_skill.motion is not None:
-                show expression currentPlayer.image_standby() as dreamwalker at chosen_skill.motion
+            $ fx = currentPlayer.use_skill(player_action, currentEnemy)
+            if fx.motion is not None:
+                show expression currentPlayer.image_standby() as dreamwalker at fx.motion
                 pause(0.3)
 
-            $ result = currentPlayer.use_skill(player_action, currentEnemy)
+            if fx.self_action is not None:
+                $ fx.self_action()
 
-            if result.self_effect == "harm":
-                play sound (result.self_sound if result.self_sound else "harm.mp3")
+            if fx.self_effect == "harm":
+                play sound (fx.self_sound if fx.self_sound else "harm.mp3")
                 show expression currentPlayer.image_hit() as dreamwalker at hit
                 pause(0.3)
-            elif result.self_effect == "heal":
-                play sound (result.self_sound if result.self_sound else "heal.mp3")
+            elif fx.self_effect in ("heal", "buff"):
+                play sound (fx.self_sound if fx.self_sound else "heal.mp3")
+                pause(0.3)
+            elif fx.self_effect == "debuff":
+                play sound (fx.self_sound if fx.self_sound else "dark_magic.mp3")
                 pause(0.3)
 
-            if result.target_hit:
+            $ total_hits = fx.total_hits()
+            if total_hits > 0:
                 show expression currentPlayer.image_attack() as dreamwalker
-                play sound result.target_sound
-                show expression currentEnemy.image() as nightmare at hit
+                $ hit_idx = 0
+                while hit_idx < total_hits:
+                    $ fx.apply_hit(hit_idx)
+                    play sound fx.target_sound
+                    show expression currentEnemy.image() as nightmare at hit
+                    pause(fx.hit_interval)
+                    $ hit_idx += 1
+            elif fx.target_effect is not None:
+                $ fx.apply_hit(0)
+                play sound (fx.target_sound if fx.target_sound else "dark_magic.mp3")
+                pause(0.25)
 
-            pause(0.25)
             show expression currentPlayer.image() as dreamwalker at attack_end
+            $ currentPlayer.tick_buffs()
         pause(0.6)
 
         if currentPlayer.mp <= 0:
@@ -232,28 +263,50 @@ label battle(enemyList, phase_count=None):
                 show expression currentEnemy.image() as nightmare at enemypos zorder 0 with easeinright
                 "새로운 적이 등장했습니다!"
         else:
-            $ enemy_motion = currentEnemy.start_turn()
-            if enemy_motion is not None:
-                show expression currentEnemy.image() as nightmare at enemy_motion
+            $ enemy_fx = currentEnemy.act_turn(currentPlayer)
+            if enemy_fx.motion is not None:
+                show expression currentEnemy.image() as nightmare at enemy_fx.motion
                 pause(0.3)
-            $ enemy_result = currentEnemy.take_turn(currentPlayer)
-            if enemy_result.target_hit:
-                play sound enemy_result.target_sound
-                show expression currentPlayer.image_hit() as dreamwalker at hit
+
+            if enemy_fx.self_action is not None:
+                $ enemy_fx.self_action()
+
+            if enemy_fx.self_effect == "harm":
+                play sound (enemy_fx.self_sound if enemy_fx.self_sound else "harm.mp3")
+                show expression currentEnemy.image() as nightmare at hit
                 pause(0.25)
+            elif enemy_fx.self_effect in ("heal", "buff"):
+                play sound (enemy_fx.self_sound if enemy_fx.self_sound else "heal.mp3")
+                pause(0.25)
+            elif enemy_fx.self_effect == "debuff":
+                play sound (enemy_fx.self_sound if enemy_fx.self_sound else "dark_magic.mp3")
+                pause(0.25)
+
+            $ enemy_hits = enemy_fx.total_hits()
+            if enemy_hits > 0:
+                $ hit_idx = 0
+                while hit_idx < enemy_hits:
+                    $ enemy_fx.apply_hit(hit_idx)
+                    play sound enemy_fx.target_sound
+                    show expression currentPlayer.image_hit() as dreamwalker at hit
+                    pause(enemy_fx.hit_interval)
+                    $ hit_idx += 1
                 show expression currentPlayer.image() as dreamwalker
-            elif enemy_result.self_effect == "heal":
-                play sound (enemy_result.self_sound if enemy_result.self_sound else "heal.mp3")
+            elif enemy_fx.target_effect is not None:
+                $ enemy_fx.apply_hit(0)
+                play sound (enemy_fx.target_sound if enemy_fx.target_sound else "dark_magic.mp3")
                 pause(0.25)
+
             show expression currentEnemy.image() as nightmare at attack_end
+            $ currentEnemy.tick_buffs()
 
             if currentPlayer.mp <= 0:
                 "적에게 쓰러졌습니다..."
                 $ on_battle = False
                 $ player_won = False
 
+    $ currentPlayer.clear_buffs()
     hide screen battle_ui with dissolve
     hide dreamwalker with easeoutleft
     hide nightmare with easeoutright
     return player_won
-

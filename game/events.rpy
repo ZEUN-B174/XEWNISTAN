@@ -290,4 +290,3 @@ label event_core_dim3:
 
     "심연의 중심부와 공명하여 {color=#c184ff}공격력 +6, 방어력 +6{/color}이 상승하고 정신력을 50 회복했습니다!"
     return
-

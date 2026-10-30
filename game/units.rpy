@@ -1,6 +1,7 @@
 init 2 python:
+    import copy
     import random
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
 
     @dataclass
     class Player:
@@ -32,9 +33,61 @@ init 2 python:
         mp: int = 0
         crit_chance: int = 0
         crit_damage: float = 1.5
+        buffs: list = field(default_factory=list)
 
         def __post_init__(self):
             self.mp = self.max_mp
+
+        # 버프/디버프가 반영된 실효 스탯 프로퍼티
+        @property
+        def eff_atk(self):
+            flat = sum(b.atk_flat for b in self.buffs)
+            pct = sum(b.atk_pct for b in self.buffs)
+            return max(1, int((self.atk + flat) * max(0.1, 1.0 + pct)))
+
+        @property
+        def eff_defence(self):
+            flat = sum(b.def_flat for b in self.buffs)
+            pct = sum(b.def_pct for b in self.buffs)
+            return max(0, int((self.defence + flat) * max(0.0, 1.0 + pct)))
+
+        @property
+        def eff_crit_chance(self):
+            return max(0, self.crit_chance + sum(b.crit_chance_flat for b in self.buffs))
+
+        @property
+        def eff_crit_damage(self):
+            return max(1.0, self.crit_damage + sum(b.crit_damage_flat for b in self.buffs))
+
+        @property
+        def dmg_taken_mult(self):
+            return max(0.1, 1.0 + sum(b.dmg_taken_pct for b in self.buffs))
+
+        def add_buff(self, effect):
+            if effect is None:
+                return
+            new_fx = copy.copy(effect)
+            for existing in self.buffs:
+                if existing.id == new_fx.id:
+                    existing.duration = max(existing.duration, new_fx.duration)
+                    return
+            self.buffs.append(new_fx)
+
+        def tick_buffs(self):
+            for b in self.buffs:
+                if b.turn_mp > 0:
+                    self.heal(b.turn_mp)
+                elif b.turn_mp < 0:
+                    self.take_damage(abs(b.turn_mp))
+                if b.turn_sanity > 0 and hasattr(self, "recover_sanity"):
+                    self.recover_sanity(b.turn_sanity)
+                elif b.turn_sanity < 0 and hasattr(self, "take_sanity"):
+                    self.take_sanity(abs(b.turn_sanity))
+                b.duration -= 1
+            self.buffs = [b for b in self.buffs if b.duration > 0]
+
+        def clear_buffs(self):
+            self.buffs.clear()
 
         def take_damage(self, amount):
             self.mp = max(0, self.mp - amount)
@@ -42,10 +95,16 @@ init 2 python:
         def heal(self, amount):
             self.mp = min(self.max_mp, self.mp + amount)
 
-        def attack(self, target, amount):
-            if self.crit_chance > 0 and random.randint(1, 100) <= self.crit_chance:
-                amount = amount * self.crit_damage
-            return calc_damage(amount, target.defence)
+        def attack(self, target, amount=None, coef=1.0):
+            if amount is None:
+                raw = self.eff_atk * coef
+            else:
+                atk_ratio = (self.eff_atk / self.atk) if self.atk > 0 else 1.0
+                raw = amount * atk_ratio
+            if self.eff_crit_chance > 0 and random.randint(1, 100) <= self.eff_crit_chance:
+                raw = raw * self.eff_crit_damage
+            mitigated = calc_damage(raw, target.eff_defence)
+            return max(1, int(mitigated * target.dmg_taken_mult))
 
         def image(self):
             return f"{self.id}.png"
@@ -54,19 +113,71 @@ init 2 python:
     class Nightmare(Unit):
         turn_counter: int = 0
 
-        def start_turn(self):
+        def act_turn(self, player):
             self.turn_counter += 1
-            return self.turn_motion()
+            return self.take_turn(player)
 
-        # 적 모션 (start_turn에서 turn_counter가 증가한 뒤 호출됨)
-        def turn_motion(self):
-            return enemy_attack_nearby
+        # 적 기본 공격 헬퍼 (모션 + 타격 시점 데미지 적용을 ActionFx로 묶음)
+        def basic_attack(self, player, coef=1.0, hits=1, motion=enemy_attack_nearby, sound="attack4.mp3", debuff=None):
+            hit_callbacks = []
+            for i in range(max(1, hits)):
+                is_last = (i == max(1, hits) - 1)
+                def _do_hit(last=is_last):
+                    dmg = self.attack(player, coef=coef)
+                    player.take_damage(dmg)
+                    if last and debuff is not None:
+                        player.add_buff(debuff)
+                hit_callbacks.append(_do_hit)
 
-        # 공격 및 스킬(자식 클래스에서 오버라이드)
-        def basic_attack(self, player):
-            damage = self.attack(player, self.atk)
-            player.take_damage(damage)
-            return ActionResult(target_hit=True, target_sound="attack4.mp3")
+            return ActionFx(
+                motion=motion,
+                target_hit=True,
+                hits=max(1, hits),
+                hit_interval=0.18 if hits > 1 else 0.25,
+                target_sound=sound,
+                hit_actions=hit_callbacks,
+            )
+
+        # 적 특수/마법 공격 헬퍼 (이성치 침식 + 정신력 피해 + 디버프)
+        def magic_attack(self, player, dmg_coef=0.0, hits=1, sanity_dmg=0, debuff=None, motion=enemy_attack_distance, sound="dark_magic.mp3"):
+            hit_callbacks = []
+            for i in range(max(1, hits)):
+                is_last = (i == max(1, hits) - 1)
+                def _do_hit(last=is_last):
+                    if dmg_coef > 0:
+                        dmg = self.attack(player, coef=dmg_coef)
+                        player.take_damage(dmg)
+                    if last:
+                        if sanity_dmg > 0:
+                            player.take_sanity(sanity_dmg)
+                        if debuff is not None:
+                            player.add_buff(debuff)
+                hit_callbacks.append(_do_hit)
+
+            return ActionFx(
+                motion=motion,
+                target_hit=(dmg_coef > 0 or sanity_dmg > 0),
+                hits=max(1, hits),
+                hit_interval=0.18 if hits > 1 else 0.25,
+                target_sound=sound,
+                target_effect="debuff" if (debuff is not None and dmg_coef <= 0 and sanity_dmg <= 0) else None,
+                hit_actions=hit_callbacks,
+            )
+
+        # 적 자가 회복/버프 헬퍼
+        def heal_self(self, coef=1.0, buff=None, motion=None, sound="heal.mp3"):
+            def _do_self():
+                if coef > 0:
+                    self.heal(int(self.eff_atk * coef))
+                if buff is not None:
+                    self.add_buff(buff)
+
+            return ActionFx(
+                motion=motion,
+                self_effect="heal" if coef > 0 else "buff",
+                self_sound=sound,
+                self_action=_do_self,
+            )
 
         def take_turn(self, player):
             return self.basic_attack(player)
@@ -86,18 +197,11 @@ init 2 python:
         atk: int = 5
         defence: int = 5
 
-        def turn_motion(self):
-            if self.turn_counter % 2 == 1:
-                return enemy_attack_nearby
-            else:
-                return enemy_attack_distance
-
         def take_turn(self, player):
             if self.turn_counter % 2 == 1:
                 return self.basic_attack(player)
             else:
-                player.take_sanity(5)
-                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+                return self.magic_attack(player, sanity_dmg=5)
 
     @dataclass
     class Teruterubozu(Nightmare):
@@ -107,21 +211,13 @@ init 2 python:
         atk: int = 10
         defence: int = 5
 
-        def turn_motion(self):
-            if self.turn_counter % 3 == 0:
-                return None
-            else:
-                return enemy_attack_distance
-
         def take_turn(self, player):
             if self.turn_counter % 3 == 1:
-                return self.basic_attack(player)
+                return self.basic_attack(player, motion=enemy_attack_distance)
             elif self.turn_counter % 3 == 2:
-                player.take_sanity(10)
-                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+                return self.magic_attack(player, sanity_dmg=10)
             else:
-                self.heal(self.atk)
-                return ActionResult(self_effect="heal", self_sound="heal.mp3")
+                return self.heal_self(coef=1.0)
 
     @dataclass
     class AbyssWisp(WilloWisp):
@@ -136,10 +232,7 @@ init 2 python:
             if self.turn_counter % 2 == 1:
                 return self.basic_attack(player)
             else:
-                player.take_sanity(12)
-                damage = self.attack(player, int(self.atk * 0.7))
-                player.take_damage(damage)
-                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+                return self.magic_attack(player, dmg_coef=0.7, sanity_dmg=12)
 
     @dataclass
     class CursedTeru(Teruterubozu):
@@ -152,13 +245,11 @@ init 2 python:
 
         def take_turn(self, player):
             if self.turn_counter % 3 == 1:
-                return self.basic_attack(player)
+                return self.basic_attack(player, motion=enemy_attack_distance)
             elif self.turn_counter % 3 == 2:
-                player.take_sanity(15)
-                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+                return self.magic_attack(player, sanity_dmg=15)
             else:
-                self.heal(int(self.atk * 1.5))
-                return ActionResult(self_effect="heal", self_sound="heal.mp3")
+                return self.heal_self(coef=1.5)
 
     @dataclass
     class DreamBoss(Nightmare):
@@ -169,18 +260,10 @@ init 2 python:
         atk: int = 14
         defence: int = 12
 
-        def turn_motion(self):
-            if self.turn_counter % 3 == 0:
-                return enemy_attack_distance
-            return enemy_attack_nearby
-
         def take_turn(self, player):
             if self.turn_counter % 3 == 0:
                 # 3턴마다 강력한 정신 오염 + 피해
-                player.take_sanity(15)
-                damage = self.attack(player, int(self.atk * 1.5))
-                player.take_damage(damage)
-                return ActionResult(target_hit=True, target_sound="dark_magic.mp3")
+                return self.magic_attack(player, dmg_coef=1.5, sanity_dmg=15)
             else:
                 return self.basic_attack(player)
 
@@ -281,4 +364,3 @@ init 2 python:
             self.ultimate_chaos = HappySuicide()
             self.special_normal = Meditate()
             self.special_chaos = Headache()
-
