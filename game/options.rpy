@@ -40,6 +40,8 @@ define gui.about = _p("""
 
 define build.name = "XEWNISTAN"
 
+define config.rollback_enabled = False
+
 
 ## 음악과 음향 ######################################################################
 

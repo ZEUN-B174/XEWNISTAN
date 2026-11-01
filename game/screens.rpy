@@ -243,7 +243,6 @@ screen quick_menu():
             style_prefix "quick"
             style "quick_menu"
 
-            textbutton _("되감기") action Rollback()
             textbutton _("대사록") action ShowMenu('history')
             textbutton _("넘기기") action Skip() alternate Skip(fast=True, confirm=True)
             textbutton _("자동진행") action Preference("auto-forward", "toggle")
@@ -1518,7 +1517,6 @@ screen quick_menu():
             style "quick_menu"
             style_prefix "quick"
 
-            textbutton _("되감기") action Rollback()
             textbutton _("넘기기") action Skip() alternate Skip(fast=True, confirm=True)
             textbutton _("자동진행") action Preference("auto-forward", "toggle")
             textbutton _("메뉴") action ShowMenu()
