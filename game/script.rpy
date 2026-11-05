@@ -1,9 +1,12 @@
 # 이 파일에 게임 스크립트를 입력합니다.
 # - 스킬 정의: skills.rpy
 # - 캐릭터 및 적(유닛) 정의: units.rpy
+# - 물결(축복) 및 아르카나(기물) 정의: blessings.rpy
 # - 전투 UI, 모션 및 전투 루프: battle.rpy
 # - 탐사 루프 및 연구실 베이스캠프: exploration.rpy
 # - 사건(Event) 및 심층 스토리: events.rpy
+init python:
+    import tossi
 
 # image 문을 사용해 이미지를 정의합니다.
 image bgplaceholder = "background.png"
@@ -31,6 +34,6 @@ label start:
 
         if currentPlayer.name == "":
             currentPlayer.name = _("테스터")
-    perwin "음, 그래. [currentPlayer.name]. 확인 완료했어."
+    perwin "아, 그래. [tossi.postfix(currentPlayer.name, u'라고')] 했지? 확인 완료했어."
     rinat "드림링크 베타 테스트에 온 걸 환영해, [currentPlayer.name]!"
     jump lab_hub

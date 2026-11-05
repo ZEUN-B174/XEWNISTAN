@@ -73,6 +73,8 @@ screen player_status_panel(p):
     python:
         p_leftbar, p_rightbar = get_bar_colors((p.mp / p.max_mp) * 100 > 20)
         ps_leftbar, ps_rightbar = get_bar_colors(p.sanity > 0)
+        wave_cnt = len(p.waves)
+        arc_cnt = len(p.arcanas)
 
     frame:
         xanchor 0.0
@@ -84,10 +86,11 @@ screen player_status_panel(p):
         vbox:
             spacing 12
             hbox:
+                spacing 15
                 text "{font=PyeongChang-Bold.ttf}[p.name]{/font}" size 60 yalign 0.5
                 if on_battle and p.isInsane:
-                    spacing 12
                     text "{color=#cc1100}{font=PyeongChang-Bold.ttf}[[광기]{/font}{/color}" size 46 yalign 0.5
+                text "{color=#cccccc}파편 [p.dream_shard] · 물결 [wave_cnt] · 아르카나 [arc_cnt]{/color}" size 40 yalign 0.5
                 textbutton "{color=#c184ff}[[상세 정보]{/color}" action Show("character_detail_ui", p=p) text_size 44 yalign 0.5
             hbox:
                 spacing 15
@@ -130,11 +133,14 @@ screen player_status_panel(p):
 screen character_detail_ui(p):
     modal True
     zorder 150
+    default right_tab = "skills"
     default show_chaos_skills = (p.sanity <= 0)
 
     python:
         def_mitigation = int(round((1.0 - (DEFENCE_CONSTANT / (DEFENCE_CONSTANT + max(0, p.eff_defence)))) * 100))
         crit_dmg_pct = int(round(p.eff_crit_damage * 100))
+        wave_cnt = len(p.waves)
+        arc_cnt = len(p.arcanas)
 
     add Solid("#000000aa")
 
@@ -147,7 +153,7 @@ screen character_detail_ui(p):
             spacing 35
             hbox:
                 xfill True
-                text "{font=PyeongChang-Bold.ttf}[p.name] — 상세 상태 및 스킬 정보{/font}" size 68 yalign 0.5
+                text "{font=PyeongChang-Bold.ttf}[p.name] — 상세 상태 · 스킬 · 물결 · 아르카나{/font}" size 68 yalign 0.5
                 textbutton "{font=PyeongChang-Bold.ttf}[[닫기]{/font}" action Hide("character_detail_ui") xalign 1.0 yalign 0.5 text_size 52
 
             hbox:
@@ -198,41 +204,107 @@ screen character_detail_ui(p):
                     else:
                         text "적용 중인 버프/디버프 없음" size 42 color "#888888"
 
-                # 우측: 스킬 목록 및 설명
+                # 우측: 탭 전환 (스킬 정보 / 보유 물결 / 보유 아르카나)
                 vbox:
                     spacing 20
                     xsize 1650
                     hbox:
-                        spacing 30
-                        text "{font=PyeongChang-Bold.ttf}{color=#c184ff}■ 보유 스킬 정보{/color}{/font}" size 54 yalign 0.5
-                        textbutton ("{color=#ffffff}[[일반 스킬]{/color}" if not show_chaos_skills else "[[일반 스킬]") action SetScreenVariable("show_chaos_skills", False) text_size 44 yalign 0.5
-                        textbutton ("{color=#cc1100}[[혼돈 스킬]{/color}" if show_chaos_skills else "[[혼돈 스킬]") action SetScreenVariable("show_chaos_skills", True) text_size 44 yalign 0.5
+                        spacing 35
+                        textbutton ("{font=PyeongChang-Bold.ttf}{color=#c184ff}■ 스킬 정보{/color}{/font}" if right_tab == "skills" else "■ 스킬 정보") action SetScreenVariable("right_tab", "skills") text_size 50 yalign 0.5
+                        textbutton ("{font=PyeongChang-Bold.ttf}{color=#c184ff}■ 물결 ([wave_cnt]){/color}{/font}" if right_tab == "waves" else "■ 물결 ([wave_cnt])") action SetScreenVariable("right_tab", "waves") text_size 50 yalign 0.5
+                        textbutton ("{font=PyeongChang-Bold.ttf}{color=#c184ff}■ 아르카나 ([arc_cnt]){/color}{/font}" if right_tab == "arcanas" else "■ 아르카나 ([arc_cnt])") action SetScreenVariable("right_tab", "arcanas") text_size 50 yalign 0.5
 
-                    if not show_chaos_skills:
-                        $ skill_entries = [
-                            ("일반 공격", p.basic_skill, False),
-                            ("일반 스킬", p.skill_normal, False),
-                            ("궁극기", p.ultimate_normal, False),
-                            ("특수 스킬", p.special_normal, False),
-                        ]
-                    else:
-                        $ skill_entries = [
-                            ("일반 공격 (공통)", p.basic_skill, False),
-                            ("일반 스킬 (광기 발동 시)", p.skill_chaos, True),
-                            ("궁극기 (광기 발동 시)", p.ultimate_chaos, True),
-                            ("특수 스킬 (이성치 0 이하 시)", p.special_chaos, True),
-                        ]
+                    if right_tab == "skills":
+                        hbox:
+                            spacing 25
+                            textbutton ("{color=#ffffff}[[일반 스킬]{/color}" if not show_chaos_skills else "[[일반 스킬]") action SetScreenVariable("show_chaos_skills", False) text_size 44 yalign 0.5
+                            textbutton ("{color=#cc1100}[[혼돈 스킬]{/color}" if show_chaos_skills else "[[혼돈 스킬]") action SetScreenVariable("show_chaos_skills", True) text_size 44 yalign 0.5
 
-                    for slot_label, sk_obj, is_chaos in skill_entries:
-                        if sk_obj is not None:
-                            $ sk_c = sk_obj.cost(p)
+                        if not show_chaos_skills:
+                            $ skill_entries = [
+                                ("일반 공격", p.basic_skill, False),
+                                ("일반 스킬", p.skill_normal, False),
+                                ("궁극기", p.ultimate_normal, False),
+                                ("특수 스킬", p.special_normal, False),
+                            ]
+                        else:
+                            $ skill_entries = [
+                                ("일반 공격 (공통)", p.basic_skill, False),
+                                ("일반 스킬 (광기 발동 시)", p.skill_chaos, True),
+                                ("궁극기 (광기 발동 시)", p.ultimate_chaos, True),
+                                ("특수 스킬 (이성치 0 이하 시)", p.special_chaos, True),
+                            ]
+
+                        for slot_label, sk_obj, is_chaos in skill_entries:
+                            if sk_obj is not None:
+                                $ sk_c = sk_obj.cost(p)
+                                vbox:
+                                    spacing 6
+                                    if is_chaos:
+                                        text "{font=PyeongChang-Bold.ttf}{color=#cc1100}[[[slot_label]] [sk_obj.name]{/color}{/font}  (소모 정신력: [sk_c])" size 46
+                                    else:
+                                        text "{font=PyeongChang-Bold.ttf}{color=#c184ff}[[[slot_label]]{/color} [sk_obj.name]{/font}  (소모 정신력: [sk_c])" size 46
+                                    text "[sk_obj.desc]" size 40 color "#dddddd"
+
+                    elif right_tab == "waves":
+                        viewport:
+                            scrollbars "vertical"
+                            mousewheel True
+                            draggable True
+                            ysize 1100
                             vbox:
-                                spacing 6
-                                if is_chaos:
-                                    text "{font=PyeongChang-Bold.ttf}{color=#cc1100}[[[slot_label]] [sk_obj.name]{/color}{/font}  (소모 정신력: [sk_c])" size 46
+                                spacing 18
+                                # 갈래 공명 현황
+                                hbox:
+                                    spacing 25
+                                    for path_key, pinfo in WAVE_PATHS.items():
+                                        $ cnt = p.count_wave_path(path_key)
+                                        $ pcol = pinfo["color"]
+                                        $ pname = pinfo["name"]
+                                        if cnt >= 3:
+                                            text "{font=PyeongChang-Bold.ttf}{color=[pcol]}[[[pname] [cnt]/3 공명 ON]{/color}{/font}" size 38
+                                        else:
+                                            text "{color=#999999}[[[pname] [cnt]/3]{/color}" size 38
+
+                                for path_key, pinfo in WAVE_PATHS.items():
+                                    if p.has_synergy(path_key):
+                                        $ pcol = pinfo["color"]
+                                        $ sname = pinfo["synergy_name"]
+                                        $ sdesc = pinfo["synergy_desc"]
+                                        vbox:
+                                            spacing 4
+                                            text "{font=PyeongChang-Bold.ttf}{color=[pcol]}★ [sname]{/color}{/font}" size 42
+                                            text "[sdesc]" size 36 color "#cccccc"
+
+                                if not p.waves:
+                                    text "보유 중인 물결(축복)이 없습니다." size 44 color "#888888"
                                 else:
-                                    text "{font=PyeongChang-Bold.ttf}{color=#c184ff}[[[slot_label]]{/color} [sk_obj.name]{/font}  (소모 정신력: [sk_c])" size 46
-                                text "[sk_obj.desc]" size 40 color "#dddddd"
+                                    for w in p.waves:
+                                        $ pinfo = w.path_info
+                                        $ pcol = pinfo["color"]
+                                        $ pname = pinfo["name"]
+                                        vbox:
+                                            spacing 4
+                                            text "{font=PyeongChang-Bold.ttf}{color=[pcol]}[[[pname]]{/color} {color=#ffd700}[w.stars_str]{/color} [w.display_name]{/font}" size 44
+                                            text "[w.desc]" size 38 color "#dddddd"
+
+                    elif right_tab == "arcanas":
+                        viewport:
+                            scrollbars "vertical"
+                            mousewheel True
+                            draggable True
+                            ysize 1100
+                            vbox:
+                                spacing 20
+                                if not p.arcanas:
+                                    text "보유 중인 아르카나(기물)가 없습니다." size 44 color "#888888"
+                                else:
+                                    for a in p.arcanas:
+                                        $ acol = "#ff5555" if a.is_cursed else "#c184ff"
+                                        vbox:
+                                            spacing 4
+                                            text "{font=PyeongChang-Bold.ttf}{color=[acol]}• [a.name]{/color}{/font}  {color=#999999}— [a.subtitle]{/color}" size 44
+                                            text "[a.desc]" size 38 color "#dddddd"
 
     key "game_menu" action Hide("character_detail_ui")
 
@@ -355,7 +427,6 @@ label battle(enemyList, phase_count=None):
     python:
         on_battle = True
         battle_active = True
-        currentPlayer.clear_buffs()
         enemyQueue = []
         if phase_count is not None:
             phase = phase_count
@@ -363,6 +434,7 @@ label battle(enemyList, phase_count=None):
             phase = random.randint(2, 3)
         for i in range(phase):
             enemyQueue.append(copy.deepcopy(random.choice(enemyList)))
+        currentPlayer.on_battle_start(enemyQueue)
         currentEnemy = enemyQueue[0]
 
     $ battle_music = random.choice(BATTLE_BGM_LIST)
@@ -416,6 +488,7 @@ label battle(enemyList, phase_count=None):
 
             show expression currentPlayer.image() as dreamwalker at attack_end
             $ currentPlayer.tick_buffs()
+            $ fx = None
         pause(0.6)
 
         if currentPlayer.mp <= 0:
@@ -423,10 +496,12 @@ label battle(enemyList, phase_count=None):
             $ battle_active = False
             $ player_won = False
         elif currentEnemy.mp <= 0:
-            "{color=#7c4dff}[currentEnemy.name]{/color}(을)를 처치했습니다!"
+            $ currentPlayer.on_kill_enemy(currentEnemy)
+            "{color=#7c4dff}[currentEnemy.name]{/color}[tossi.pick(currentEnemy.name, u'을')] 처치했습니다!"
             hide nightmare with dissolve
             $ enemyQueue.pop(0)
             if not enemyQueue:
+                $ currentPlayer.on_battle_win()
                 $ battle_active = False
                 $ player_won = True
             else:
@@ -470,11 +545,25 @@ label battle(enemyList, phase_count=None):
 
             show expression currentEnemy.image() as nightmare at attack_end
             $ currentEnemy.tick_buffs()
+            $ enemy_fx = None
 
             if currentPlayer.mp <= 0:
                 "적에게 쓰러졌습니다..."
                 $ battle_active = False
                 $ player_won = False
+            elif currentEnemy.mp <= 0:
+                $ currentPlayer.on_kill_enemy(currentEnemy)
+                "{color=#7c4dff}[currentEnemy.name]{/color}[tossi.pick(currentEnemy.name, u'을')] 처치했습니다!"
+                hide nightmare with dissolve
+                $ enemyQueue.pop(0)
+                if not enemyQueue:
+                    $ currentPlayer.on_battle_win()
+                    $ battle_active = False
+                    $ player_won = True
+                else:
+                    $ currentEnemy = enemyQueue[0]
+                    show expression currentEnemy.image() as nightmare at enemypos zorder 0 with easeinright
+                    "새로운 적이 등장했습니다!"
 
     $ currentPlayer.clear_buffs()
     hide screen battle_ui with dissolve

@@ -66,7 +66,7 @@ init 3 python:
             tag=_("[전투]"),
             title=_("악몽 조우"),
             desc=_("배회하는 악몽들을 쓰러뜨리고 길을 개척합니다."),
-            reward_hint=_("보상: 꿈의 파편 + 전투 후 공명(강화)"),
+            reward_hint=_("보상: 꿈의 파편 + 물결(축복) 1개 선택"),
             is_eroded=False,
         ),
         "eroded_battle": AreaNode(
@@ -74,7 +74,7 @@ init 3 python:
             tag=_("[광란의 전투 · 침식]"),
             title=_("폭주하는 악몽"),
             desc=_("이성 붕괴에 이끌려 흉포해진 악몽 무리가 덮쳐옵니다."),
-            reward_hint=_("보상: 다량의 꿈의 파편 + 고효율 공명"),
+            reward_hint=_("보상: 다량의 파편 + 고급 물결(축복) 선택"),
             is_eroded=True,
         ),
         "elite": AreaNode(
@@ -82,7 +82,7 @@ init 3 python:
             tag=_("[정예]"),
             title=_("짙은 악몽의 영역"),
             desc=_("강력한 정예 악몽이 도사리고 있는 위험 구역입니다."),
-            reward_hint=_("보상: 대량의 꿈의 파편 + 상급 공명(강화)"),
+            reward_hint=_("보상: 대량의 파편 + 고급 물결 + 아르카나(기물)"),
             is_eroded=False,
         ),
         "event": AreaNode(
@@ -90,7 +90,7 @@ init 3 python:
             tag=_("[사건]"),
             title=_("꿈의 단편"),
             desc=_("누군가의 기억과 무의식이 응결된 기묘한 사건을 마주합니다."),
-            reward_hint=_("특징: 선택지 분기 (캐릭터 / 이성치 조건)"),
+            reward_hint=_("특징: 선택지 분기 (캐릭터 / 이성치 / 아르카나)"),
             is_eroded=False,
         ),
         "eroded_event": AreaNode(
@@ -98,7 +98,7 @@ init 3 python:
             tag=_("[침식된 사건 · 침식]"),
             title=_("악몽의 이면"),
             desc=_("무너진 이성 너머로 꿈세계의 뒤틀린 이면이 모습을 드러냅니다."),
-            reward_hint=_("특징: 고위험 · 고보상 광기 사건"),
+            reward_hint=_("특징: 고위험 · 고보상 광기 사건 (물결/아르카나)"),
             is_eroded=True,
         ),
         "reward": AreaNode(
@@ -106,7 +106,7 @@ init 3 python:
             tag=_("[자각]"),
             title=_("무의식 공명 지점"),
             desc=_("꿈을 자각하여 전투 없이 무의식의 힘을 끌어냅니다."),
-            reward_hint=_("보상: 무료 스탯 공명 / 파편 / 이성 조정"),
+            reward_hint=_("보상: 무료 물결 획득 / 물결 강화 / 정신 정화"),
             is_eroded=False,
         ),
         "eroded_reward": AreaNode(
@@ -114,7 +114,7 @@ init 3 python:
             tag=_("[금기된 자각 · 침식]"),
             title=_("심연의 등가교환"),
             desc=_("정신이나 이성을 대가로 금기된 힘을 강제로 추출합니다."),
-            reward_hint=_("보상: 대가를 치르는 파격적 강화"),
+            reward_hint=_("보상: 대가를 치르고 아르카나 / 상급 물결 획득"),
             is_eroded=True,
         ),
         "relay": AreaNode(
@@ -122,7 +122,7 @@ init 3 python:
             tag=_("[중계소]"),
             title=_("드림링크 안전지대"),
             desc=_("현실의 페르윈·리나트와 통신이 연결되는 정비 구역입니다."),
-            reward_hint=_("특징: 정신력/이성 정비 및 리나트의 상점"),
+            reward_hint=_("특징: 정신력/이성 정비 및 물결 강화 · 기물 상점"),
             is_eroded=False,
         ),
         "core_event": AreaNode(
@@ -130,7 +130,7 @@ init 3 python:
             tag=_("[심층 사건 · 핵심]"),
             title=_("기억의 핵"),
             desc=_("이 차원의 가장 깊은 진실이 잠들어 있는 핵심 기억 구역입니다."),
-            reward_hint=_("특징: 메인 스토리 진행 및 특별 보상"),
+            reward_hint=_("특징: 메인 스토리 진행 및 아르카나/물결 보상"),
             is_eroded=False,
         ),
         "boss": AreaNode(
@@ -138,7 +138,7 @@ init 3 python:
             tag=_("[차원 보스]"),
             title=_("주인 악몽의 심장부"),
             desc=_("차원을 지배하는 주인 악몽을 쓰러뜨려야 다음 심층으로 내려갈 수 있습니다."),
-            reward_hint=_("보상: 다음 차원 돌파 및 대량 보상"),
+            reward_hint=_("보상: 차원 돌파 + ★3 확률 대폭 상승 물결 + 아르카나"),
             is_eroded=False,
         ),
     }
@@ -346,7 +346,7 @@ label lab_upgrade:
             "꿈의 결정 50개로 자각몽 동조율 즉시 +1 레벨업 (현재 [playerAccount.dream_crystal]개)":
                 $ playerAccount.dream_crystal -= 50
                 $ playerAccount.level += 1
-                perwin "동조율 업그레이드 완료! 이제 Lv.[playerAccount.level](이)야."
+                perwin "동조율 업그레이드 완료! 이제 Lv.[tossi.postfix(str(playerAccount.level), u'이야')]."
             "돌아간다":
                 pass
     else:
@@ -378,6 +378,47 @@ label start_dream_run:
     jump enter_dimension
 
 
+label grant_wave_reward(mode="normal", preferred_path=None, title_text="공명할 물결(축복)을 선택하세요"):
+    $ wave_choices = roll_wave_choices(currentPlayer, 3, mode=mode, preferred_path=preferred_path)
+    if not wave_choices:
+        $ currentPlayer.dream_shard += 80
+        "모든 물결을 이미 보유하고 있어 대신 {color=#c184ff}꿈의 파편 80개{/color}를 획득했습니다!"
+        return
+
+    call screen wave_select_ui(wave_choices, title_text=title_text)
+    $ chosen_w = _return
+    if chosen_w is not None:
+        $ prev_cnt = currentPlayer.count_wave_path(chosen_w.path)
+        $ currentPlayer.add_wave(chosen_w)
+        $ new_cnt = currentPlayer.count_wave_path(chosen_w.path)
+        $ pinfo = chosen_w.path_info
+        $ pcol = pinfo["color"]
+        $ pname = pinfo["name"]
+        $ sname = pinfo["synergy_name"]
+        $ sdesc = pinfo["synergy_desc"]
+        "{color=[pcol]}[[[pname]] [chosen_w.stars_str] [chosen_w.display_name]{/color} 물결을 획득했습니다!"
+        if prev_cnt < 3 and new_cnt >= 3:
+            play sound "heal.mp3"
+            "{font=PyeongChang-Bold.ttf}{color=[pcol]}★ [[갈래 공명 발동] [sname] ★{/color}{/font}\n[sdesc]"
+    return
+
+
+label grant_arcana_reward(count=3, include_cursed=True, title_text="획득할 아르카나(기물)를 선택하세요"):
+    $ arc_choices = roll_arcana_choices(currentPlayer, count=count, include_cursed=include_cursed)
+    if not arc_choices:
+        $ currentPlayer.dream_shard += 100
+        "더 이상 획득 가능한 아르카나가 없어 대신 {color=#c184ff}꿈의 파편 100개{/color}를 획득했습니다!"
+        return
+
+    call screen arcana_select_ui(arc_choices, title_text=title_text)
+    $ chosen_a = _return
+    if chosen_a is not None:
+        $ currentPlayer.add_arcana(chosen_a)
+        $ acol = "#ff5555" if chosen_a.is_cursed else "#c184ff"
+        "아르카나 {color=[acol]}『[chosen_a.name]』{/color}[tossi.pick(chosen_a.name, u'을')] 획득했습니다!\n효과: [chosen_a.desc]"
+    return
+
+
 label enter_dimension:
     $ dim_info = DIMENSION_INFO[currentDim]
     $ dim_name = dim_info["name"]
@@ -390,38 +431,40 @@ label enter_dimension:
     if currentDim == 1:
         rinat "제1차원 표층몽에 진입했어! 본격적으로 1구역 탐사를 시작하기 전에 초기 동기화 지원을 하나 골라봐."
         menu:
-            "[[안정 동기화] 최대 정신력 +30 및 정신력 회복":
-                $ currentPlayer.max_mp += 30
+            "[[물결 동기화] 시작 물결(축복) 1개 선택 및 최대 정신력 +20":
+                $ currentPlayer.max_mp += 20
                 $ currentPlayer.mp = currentPlayer.max_mp
-                "정신의 방벽이 두터워졌습니다. (최대 정신력 +30)"
-            "[[공격 동기화] 공격력 +4, 치명타 확률 +10%%":
-                $ currentPlayer.atk += 4
-                $ currentPlayer.crit_chance += 10
-                "의식이 날카롭게 벼려집니다. (공격력 +4, 치명타 확률 +10%%)"
-            "[[물질 동기화] 꿈의 파편 +150 획득":
-                $ currentPlayer.dream_shard += 150
-                "응결된 꿈의 파편을 150개 확보했습니다."
-            "{color=#cc1100}[[금기 동기화] 이성치 -110 (즉시 광기/침식 진입), 공격력 +7{/color}":
+                call grant_wave_reward("normal", title_text="초기 동기화 — 시작 물결 선택")
+            "[[기물 동기화] 일반 아르카나(기물) 3종 중 1개 선택 획득":
+                call grant_arcana_reward(3, include_cursed=False, title_text="초기 동기화 — 시작 아르카나 선택")
+            "[[물질 동기화] 꿈의 파편 +180개 획득 및 공격력 +3":
+                $ currentPlayer.dream_shard += 180
+                $ currentPlayer.atk += 3
+                "응결된 꿈의 파편 180개를 확보하고 의식을 벼렸습니다."
+            "{color=#cc1100}[[금기 동기화] 이성치 -110 (즉시 광기/침식 진입) + 상급 물결 & 아르카나 획득{/color}":
                 $ currentPlayer.take_sanity(110)
-                $ currentPlayer.atk += 7
                 $ play_exploration_bgm(currentDim, currentPlayer.sanity)
-                "드림링크의 안전 리미터를 해제했습니다! 이성이 급감하는 대신 강력한 힘이 솟구칩니다."
+                "드림링크의 안전 리미터를 강제로 해제했습니다! 이성이 급감하는 대신 심연의 보상이 열립니다."
+                call grant_wave_reward("eroded", title_text="금기 동기화 — 심연의 물결 선택")
+                call grant_arcana_reward(3, include_cursed=True, title_text="금기 동기화 — 아르카나 선택")
     else:
-        perwin "보스를 쓰러뜨리고 더 깊은 층, {color=#c184ff}제[currentDim]차원 [dim_name]{/color}(으)로 하강했어."
+        perwin "보스를 쓰러뜨리고 더 깊은 층, {color=#c184ff}제[currentDim]차원 [dim_name]{/color}[tossi.pick(dim_name, u'으로')] 하강했어."
         rinat "심층 하강 보너스야! 다음 구역으로 가기 전에 하나를 선택해."
         menu:
-            "정신력을 50%% 회복하고 최대 정신력 +20":
-                $ currentPlayer.max_mp += 20
+            "[[심층 공명] 정신력 50%% 회복 및 상급 물결(축복) 1개 선택":
                 $ currentPlayer.heal(currentPlayer.max_mp // 2)
-                "깊은 숨을 내쉬며 정신력을 추슬렀습니다."
-            "공격력 +5 및 방어력 +5 상승":
-                $ currentPlayer.atk += 5
-                $ currentPlayer.defence += 5
-                "더 깊은 악몽에 맞서기 위해 의식을 강화했습니다."
-            "이성치를 +40 회복하고 꿈의 파편 +100 획득":
+                call grant_wave_reward("elite", title_text="심층 하강 보너스 — 상급 물결 선택")
+            "[[유물 탐색] 정신력 30%% 회복 및 아르카나(기물) 1개 선택":
+                $ currentPlayer.heal(int(currentPlayer.max_mp * 0.3))
+                call grant_arcana_reward(3, include_cursed=True, title_text="심층 하강 보너스 — 아르카나 선택")
+            "[[이성 재구축] 이성치 +40 회복, 보유 물결 1개 무료 강화 및 파편 +100":
                 $ currentPlayer.recover_sanity(40)
                 $ currentPlayer.dream_shard += 100
-                "흔들리던 이성을 다잡고 파편을 수거했습니다."
+                call screen wave_upgrade_ui(cost_per_upgrade=0)
+                $ up_w = _return
+                if isinstance(up_w, Wave):
+                    $ currentPlayer.upgrade_wave(up_w)
+                    "물결 {color=#5ce1e6}[up_w.display_name]{/color} 강화가 완료되었습니다!"
 
     jump exploration_loop
 
@@ -472,6 +515,9 @@ label exploration_loop:
                 jump run_settlement
         else:
             $ currentArea += 1
+            if currentPlayer.has_arcana("black_umbrella"):
+                $ currentPlayer.heal(12)
+                $ currentPlayer.recover_sanity(5)
 
     jump run_settlement
 
@@ -507,6 +553,8 @@ label node_battle(mode="normal"):
             shard_gain = 75 + currentDim * 25
         else:
             shard_gain = 90 + currentDim * 30
+        if currentPlayer.has_arcana("golden_dreamcatcher"):
+            shard_gain = int(shard_gain * 1.4)
         currentPlayer.dream_shard += shard_gain
 
     "전투에서 승리하여 {color=#c184ff}꿈의 파편 [shard_gain]개{/color}를 획득했습니다!"
@@ -515,29 +563,15 @@ label node_battle(mode="normal"):
 
 
 label post_battle_blessing(mode="normal"):
-    # 추후 물결(축복) 시스템이 들어갈 자리 (현재는 프로토타입 공명 보너스 선택)
-    python:
-        stat_scale = 2 if mode in ("eroded", "elite", "boss") else 1
-        b_atk = 2 * stat_scale
-        b_heal1 = 15 * stat_scale
-        b_def = 3 * stat_scale
-        b_maxmp = 10 * stat_scale
-        b_san = 15 * stat_scale
-        b_cdmg = round(0.15 * stat_scale, 2)
-        b_heal2 = 25 * stat_scale
-    menu:
-        "전투 후 꿈의 물결이 공명합니다. 흡수할 힘을 선택하세요."
-        "[[파괴의 물결] 공격력 +[b_atk] 및 정신력 [b_heal1] 회복":
-            $ currentPlayer.atk += b_atk
-            $ currentPlayer.heal(b_heal1)
-        "[[수호의 물결] 방어력 +[b_def] 및 최대 정신력 +[b_maxmp]":
-            $ currentPlayer.defence += b_def
-            $ currentPlayer.max_mp += b_maxmp
-            $ currentPlayer.heal(b_maxmp)
-        "[[광기의 물결] 이성치 -[b_san], 치명타 피해 +[b_cdmg]배 및 정신력 [b_heal2] 회복":
-            $ currentPlayer.take_sanity(b_san)
-            $ currentPlayer.crit_damage = round(currentPlayer.crit_damage + b_cdmg, 2)
-            $ currentPlayer.heal(b_heal2)
+    if mode == "elite":
+        call grant_wave_reward("elite", title_text="정예 처치 보상 — 상급 물결(축복) 선택")
+        call grant_arcana_reward(3, include_cursed=True, title_text="정예 처치 보상 — 아르카나(기물) 선택")
+    elif mode == "boss":
+        call grant_wave_reward("boss", title_text="주인 악몽 처치 보상 — 최상급 물결 선택")
+    elif mode == "eroded":
+        call grant_wave_reward("eroded", title_text="광란의 전투 보상 — 침식 물결 선택")
+    else:
+        call grant_wave_reward("normal", title_text="전투 승리 — 공명할 물결(축복)을 선택하세요")
     return
 
 
@@ -546,49 +580,75 @@ label node_reward(is_eroded=False):
         "— {color=#c184ff}[[자각 구역] 무의식 공명 지점{/color} —"
         "고요한 꿈의 틈새를 발견했습니다. 이곳에서는 스스로의 자각몽을 조율하여 원하는 보상을 이끌어낼 수 있습니다."
         menu:
-            "[[기억 채굴] 꿈의 파편 +100 획득 및 정신력 20 회복":
-                $ currentPlayer.dream_shard += 100
-                $ currentPlayer.heal(20)
-                "흩어진 꿈의 파편을 모으고 숨을 돌렸습니다."
-            "[[자각 강화] 공격력 +3, 방어력 +3 상승":
-                $ currentPlayer.atk += 3
-                $ currentPlayer.defence += 3
-                "꿈속의 법칙을 재정의하여 신체를 강화했습니다."
-            "[[정신 정화] 정신력 40 회복 및 이성치 +25 회복":
-                $ currentPlayer.heal(40)
+            "[[물결 공명] 새로운 물결(축복) 1개 선택 획득":
+                call grant_wave_reward("normal", title_text="자각 구역 — 공명할 물결 선택")
+            "[[물결 제련] 보유 중인 물결 1개 무료 강화 및 정신력 25 회복":
+                $ currentPlayer.heal(25)
+                call screen wave_upgrade_ui(cost_per_upgrade=0)
+                $ up_w = _return
+                if isinstance(up_w, Wave):
+                    $ currentPlayer.upgrade_wave(up_w)
+                    "물결 {color=#5ce1e6}[up_w.display_name]{/color} 강화가 완료되었습니다!"
+                else:
+                    $ currentPlayer.dream_shard += 70
+                    "강화할 물결이 없어 대신 꿈의 파편 +70개를 얻었습니다."
+            "[[기물 인양] 일반 아르카나(기물) 2종 중 1개 선택 획득":
+                call grant_arcana_reward(2, include_cursed=False, title_text="자각 구역 — 아르카나 선택")
+            "[[정신 정화] 정신력 45 회복, 이성치 +25 회복 및 파편 +60 획득":
+                $ currentPlayer.heal(45)
                 $ currentPlayer.recover_sanity(25)
+                $ currentPlayer.dream_shard += 60
                 "맑은 파동이 머릿속의 안개를 걷어냅니다."
     else:
         "— {color=#cc1100}[[금기된 자각] 심연의 등가교환{/color} —"
         "일그러진 제단 위에서 검은 결정들이 속삭입니다. 대가를 바치면 그 이상의 힘을 손에 넣을 수 있습니다."
         menu:
-            "{color=#cc1100}[[피의 서약] 현재 정신력 30%% 소모 → 공격력 +7 및 꿈의 파편 +120{/color}":
+            "{color=#cc1100}[[피의 유물] 현재 정신력 30%% 소모 → 아르카나(기물) 1개 획득 및 파편 +80{/color}":
                 $ currentPlayer.harm(int(currentPlayer.mp * 0.3))
-                $ currentPlayer.atk += 7
-                $ currentPlayer.dream_shard += 120
-                "고통과 함께 압도적인 파괴력이 혈관을 타고 흐릅니다!"
-            "{color=#cc1100}[[광기 수용] 이성치 -30 → 최대 정신력 +40 및 즉시 정신력 50 회복{/color}":
+                $ currentPlayer.dream_shard += 80
+                call grant_arcana_reward(3, include_cursed=True, title_text="심연의 등가교환 — 아르카나 선택")
+            "{color=#cc1100}[[광기 공명] 이성치 -30 → 상급 물결 1개 획득 및 즉시 강화(+) 상태로 각성{/color}":
                 $ currentPlayer.take_sanity(30)
-                $ currentPlayer.max_mp += 40
-                $ currentPlayer.heal(50)
-                "이성을 내려놓자 오히려 정신의 그릇이 비정상적으로 확장됩니다!"
-            "[[거부] 제단을 무시하고 그냥 지나간다 (이성치 +10)":
-                $ currentPlayer.recover_sanity(10)
+                $ wave_choices = roll_wave_choices(currentPlayer, 3, mode="elite")
+                if wave_choices:
+                    python:
+                        for wc in wave_choices:
+                            wc.upgraded = True
+                    call screen wave_select_ui(wave_choices, title_text="광기 공명 — 강화된 물결(+) 선택", allow_reroll=False)
+                    $ chosen_w = _return
+                    if chosen_w is not None:
+                        $ prev_cnt = currentPlayer.count_wave_path(chosen_w.path)
+                        $ currentPlayer.add_wave(chosen_w)
+                        $ new_cnt = currentPlayer.count_wave_path(chosen_w.path)
+                        $ pinfo = chosen_w.path_info
+                        $ pcol = pinfo["color"]
+                        $ pname = pinfo["name"]
+                        $ sname = pinfo["synergy_name"]
+                        $ sdesc = pinfo["synergy_desc"]
+                        "강화된 물결 {color=[pcol]}[[[pname]] [chosen_w.stars_str] [chosen_w.display_name]{/color}을(를) 획득했습니다!"
+                        if prev_cnt < 3 and new_cnt >= 3:
+                            play sound "heal.mp3"
+                            "{font=PyeongChang-Bold.ttf}{color=[pcol]}★ [[갈래 공명 발동] [sname] ★{/color}{/font}\n[sdesc]"
+            "[[거부] 제단을 무시하고 그냥 지나간다 (이성치 +15, 정신력 20 회복)":
+                $ currentPlayer.recover_sanity(15)
+                $ currentPlayer.heal(20)
                 "유혹을 뿌리치고 제단을 뒤로했습니다."
     return
 
 
 label node_relay:
     $ terminal_used = False
+    $ shop_wave_bought = 0
+    $ shop_arcana_bought = False
     "— {color=#c184ff}[[중계소] 드림링크 안전지대{/color} —"
     perwin "치직— 아, 연결됐다! [currentPlayer.name], 상태는 괜찮아?"
-    rinat "보스 구역에 들어가기 전에 단말기에서 정신력을 정비하거나, 모은 꿈의 파편으로 거래를 할 수 있어~"
+    rinat "보스 구역에 들어가기 전에 단말기에서 정신력을 정비하거나, 모은 꿈의 파편으로 물결 강화나 아르카나 구매를 할 수 있어~"
 
     label relay_menu:
         menu:
             "페르윈의 터미널: 정신력 & 이성치 정비 (1회)" if not terminal_used:
                 jump relay_terminal
-            "리나트의 상점: 꿈의 파편으로 강화 구매 (보유: [currentPlayer.dream_shard]개)":
+            "리나트의 상점: 물결 강화 · 물결/아르카나 구매 (보유 파편: [currentPlayer.dream_shard]개)":
                 jump relay_shop
             "정비를 마치고 다음 구역으로 출발한다":
                 perwin "건투를 빌게. 신호가 끊기지 않게 주의해!"
@@ -603,39 +663,51 @@ label relay_terminal:
             $ currentPlayer.recover_sanity(25)
             $ play_exploration_bgm(currentDim, currentPlayer.sanity)
             perwin "뇌파 출력 안정화 완료. 한결 버티기 수월할 거야."
-        "[[드림링크 과부하] 이성치 -35 삭감, 정신력 40%% 회복 및 공격력 +3":
+        "[[드림링크 과부하] 이성치 -35 삭감, 정신력 40%% 회복 및 보유 물결 1개 무료 강화":
             $ terminal_used = True
             $ currentPlayer.take_sanity(35)
             $ currentPlayer.heal(int(currentPlayer.max_mp * 0.4))
-            $ currentPlayer.atk += 3
             $ play_exploration_bgm(currentDim, currentPlayer.sanity)
-            perwin "출력 리미터를 더 풀었어. 정신줄 단단히 잡아!"
+            perwin "출력 리미터를 더 풀었어. 남는 연산력으로 물결 하나를 강화해 줄게!"
+            call screen wave_upgrade_ui(cost_per_upgrade=0)
+            $ up_w = _return
+            if isinstance(up_w, Wave):
+                $ currentPlayer.upgrade_wave(up_w)
+                "물결 {color=#5ce1e6}[up_w.display_name]{/color} 강화가 완료되었습니다!"
         "돌아간다":
             pass
     jump relay_menu
 
 label relay_shop:
+    python:
+        disc = 0.75 if currentPlayer.has_arcana("succubus_lipstick") else 1.0
+        price_heal = int(70 * disc)
+        price_up = int(60 * disc)
+        price_wave = int(90 * disc)
+        price_arc = int(140 * disc)
+        shop_wave_left = 2 - shop_wave_bought
+
     menu:
-        "리나트: '꿈의 파편만 충분하다면 뭐든 조율해 줄게!' (보유 파편: [currentPlayer.dream_shard]개)"
-        "[[파편 80개] 정신력 완전 회복" if currentPlayer.dream_shard >= 80:
-            $ currentPlayer.dream_shard -= 80
+        "리나트: '꿈의 파편만 충분하다면 물결 강화든 희귀 아르카나든 조율해 줄게!' (보유 파편: [currentPlayer.dream_shard]개)"
+        "[[파편 [price_heal]개] 정신력 완전 회복" if currentPlayer.dream_shard >= price_heal and currentPlayer.mp < currentPlayer.max_mp:
+            $ currentPlayer.dream_shard -= price_heal
             $ currentPlayer.mp = currentPlayer.max_mp
             rinat "정신력 100%% 충전 완료~!"
-        "[[파편 100개] 무의식 증폭기 (공격력 +4)" if currentPlayer.dream_shard >= 100:
-            $ currentPlayer.dream_shard -= 100
-            $ currentPlayer.atk += 4
-            rinat "공격력을 높여뒀어. 악몽들을 시원하게 날려버려!"
-        "[[파편 100개] 허상 방벽 코어 (방어력 +5, 최대 정신력 +20)" if currentPlayer.dream_shard >= 100:
-            $ currentPlayer.dream_shard -= 100
-            $ currentPlayer.defence += 5
-            $ currentPlayer.max_mp += 20
-            $ currentPlayer.heal(20)
-            rinat "방어 코어 장착 완료! 이제 훨씬 덜 아플 거야."
-        "[[파편 120개] 금단의 아르카나 프로토타입 (치명타 확률 +15%%, 치명타 피해 +0.3배)" if currentPlayer.dream_shard >= 120:
-            $ currentPlayer.dream_shard -= 120
-            $ currentPlayer.crit_chance += 15
-            $ currentPlayer.crit_damage = round(currentPlayer.crit_damage + 0.3, 2)
-            rinat "후후, 꽤 희귀한 기물을 골랐네?"
+        "[[파편 [price_up]개] 보유 중인 물결(축복) 강화":
+            call screen wave_upgrade_ui(cost_per_upgrade=price_up)
+            $ up_w = _return
+            if isinstance(up_w, Wave):
+                $ currentPlayer.dream_shard -= price_up
+                $ currentPlayer.upgrade_wave(up_w)
+                rinat "{color=#5ce1e6}[up_w.display_name]{/color} 강화 완료! 위력이 한층 올라갔을 거야."
+        "[[파편 [price_wave]개] 새로운 물결(축복) 구매 ([shop_wave_left]회 남음)" if currentPlayer.dream_shard >= price_wave and shop_wave_bought < 2:
+            $ currentPlayer.dream_shard -= price_wave
+            $ shop_wave_bought += 1
+            call grant_wave_reward("elite", title_text="리나트의 상점 — 구매할 물결 선택")
+        "[[파편 [price_arc]개] 미지의 아르카나(기물) 구매 (1회)" if currentPlayer.dream_shard >= price_arc and not shop_arcana_bought:
+            $ currentPlayer.dream_shard -= price_arc
+            $ shop_arcana_bought = True
+            call grant_arcana_reward(3, include_cursed=True, title_text="리나트의 상점 — 구매할 아르카나 선택")
         "상점을 나간다":
             jump relay_menu
     jump relay_shop
@@ -645,7 +717,7 @@ label node_boss:
     $ dim_info = DIMENSION_INFO[currentDim]
     $ boss_name = dim_info["boss_name"]
     "— {color=#ff4444}[[제[currentDim]차원 보스 구역]{/color} —"
-    perwin "강대한 파형이 감지돼! 이 차원의 주인 악몽, {color=#ff4444}[boss_name]{/color}(이)야!"
+    perwin "강대한 파형이 감지돼! 이 차원의 주인 악몽, {color=#cc1100}[boss_name]{/color}[tossi.pick(boss_name, u'이야')]!"
     $ boss_enemies = build_battle_enemies(currentDim, "boss")
     call battle(boss_enemies, phase_count=1)
     $ won = _return
@@ -653,8 +725,11 @@ label node_boss:
         return
 
     $ play_exploration_bgm(currentDim, currentPlayer.sanity)
-    $ boss_shard = 150 * currentDim
-    $ currentPlayer.dream_shard += boss_shard
+    python:
+        boss_shard = 150 * currentDim
+        if currentPlayer.has_arcana("golden_dreamcatcher"):
+            boss_shard = int(boss_shard * 1.4)
+        currentPlayer.dream_shard += boss_shard
     "주인 악몽을 물리쳤습니다! {color=#c184ff}꿈의 파편 [boss_shard]개{/color}를 획득했습니다!"
     call post_battle_blessing("boss")
     return

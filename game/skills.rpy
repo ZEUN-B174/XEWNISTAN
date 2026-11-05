@@ -81,6 +81,8 @@ init 1 python:
         # 타격(단타/다단히트/디버프) ActionFx 생성 헬퍼
         def hit_fx(self, user, target, dmg_coef=None, hits=None, motion=..., sound=None, debuff=None, sanity_dmg=0):
             use_coef = self.dmg_coef if dmg_coef is None else dmg_coef
+            if isinstance(self, ChaoticSkill) and hasattr(user, "has_arcana") and user.has_arcana("white_noise_tape"):
+                use_coef = use_coef * 1.3
             use_hits = self.hits if hits is None else hits
             use_motion = self.motion if motion is ... else motion
             use_sound = self.target_sound if sound is None else sound
@@ -94,6 +96,8 @@ init 1 python:
                     if use_coef > 0 and target is not None:
                         dmg = user.attack(target, coef=use_coef)
                         target.take_damage(dmg)
+                        if hasattr(user, "on_hit_target"):
+                            user.on_hit_target(target, dmg)
                     if last and target is not None:
                         if use_sanity_dmg > 0 and hasattr(target, "take_sanity"):
                             target.take_sanity(use_sanity_dmg)
@@ -171,7 +175,10 @@ init 1 python:
             return fx
 
         def cost(self, user):
-            return int(user.atk * self.cost_coef)
+            base_cost = int(user.atk * self.cost_coef)
+            if hasattr(user, "skill_cost_mult"):
+                base_cost = int(base_cost * user.skill_cost_mult)
+            return max(0, base_cost)
 
         def is_available(self, user):
             return user.mp > self.cost(user)
